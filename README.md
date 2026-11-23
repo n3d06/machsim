@@ -34,8 +34,10 @@ python3 -m http.server 8000
 
 **Đưa lên mạng (GitHub Pages):** repo đã có workflow `.github/workflows/deploy.yml`. Vào *Settings → Pages → Source* chọn **GitHub Actions**. Mỗi lần push lên `main`, workflow sẽ:
 1. chạy `node tools/test.js` (lỗi thì không deploy);
-2. gắn `?v=<mã commit>` vào mọi tệp CSS/JS (**cache-busting**) để trình duyệt luôn tải bản mới;
+2. gắn `?v=<mã commit>` vào mọi tệp CSS/JS và đặt phiên bản cho Service Worker;
 3. deploy lên `https://<tên-tài-khoản>.github.io/machsim/`.
+
+**Cache:** bản deploy dùng Service Worker (`sw.js`) lưu toàn bộ ứng dụng vào bộ nhớ đệm của trình duyệt — lần sau mở tức thì, **chạy được cả khi mất mạng**, và có thể cài như ứng dụng (PWA). CSS/JS lấy từ cache trước; trang HTML ưu tiên mạng nên khi có bản deploy mới, trình duyệt nhận đường dẫn `?v=` mới, tải bản mới và tự xoá cache cũ. Khi chạy thử ở máy (không qua workflow) Service Worker không bật, để luôn thấy code mới nhất.
 
 ## Mô hình & lõi giải
 

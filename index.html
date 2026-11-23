@@ -6,6 +6,8 @@
 <title>MachSim – Giả lập mạch điện tử</title>
 <meta name="description" content="Giả lập và thiết kế mạch điện tử trực tuyến cho sinh viên ngành Điện – Điện tử: diode, Zener, LED, BJT, MOSFET, JFET, SCR, dao động ký và vẽ đặc tuyến linh kiện.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d1117'/%3E%3Cpath d='M4 16h7M21 16h7' stroke='%234fc3f7' stroke-width='2.5' stroke-linecap='round'/%3E%3Cpath d='M11 9v14l10-7z' fill='%234fc3f7'/%3E%3Cpath d='M21 9v14' stroke='%234fc3f7' stroke-width='2.5'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0d1117">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body data-view="design">
@@ -174,5 +176,11 @@
 <script src="js/scope.js"></script>
 <script src="js/curves.js"></script>
 <script src="js/app.js"></script>
+<script>
+  // Chỉ bật cache offline ở bản đã deploy (workflow chèn thẻ machsim-version)
+  if ('serviceWorker' in navigator && document.querySelector('meta[name="machsim-version"]')) {
+    addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+</script>
 </body>
 </html>

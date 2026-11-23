@@ -35,17 +35,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Cache-busting: gắn ?v=<mã commit> vào mọi tệp CSS/JS để trình duyệt
-      # luôn tải bản mới sau mỗi lần deploy, không dùng lại bản cũ đã lưu.
-      - name: Build (cache-busting)
+      # Cache theo phiên bản: CSS/JS mang ?v=<mã commit> nên được lưu lâu trong cache
+      # (Service Worker lấy từ cache trước, chạy được offline); khi có commit mới,
+      # đường dẫn đổi nên trình duyệt tự lấy bản mới và xoá bộ cache cũ.
+      - name: Build (cache theo phiên bản)
         run: |
           VERSION="${GITHUB_SHA::8}"
           mkdir -p _site
-          cp -r index.html css js _site/
+          cp -r index.html sw.js manifest.webmanifest icon.svg css js _site/
+          sed -i "s/__VERSION__/${VERSION}/" _site/sw.js
           sed -i -E "s#(href|src)=\"((css|js)/[^\"?]+)\"#\1=\"\2?v=${VERSION}\"#g" _site/index.html
           sed -i "s#</head>#<meta name=\"machsim-version\" content=\"${VERSION}\">\n</head>#" _site/index.html
           touch _site/.nojekyll
           grep -nE "\?v=|machsim-version" _site/index.html
+          grep -n "const VERSION" _site/sw.js
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
