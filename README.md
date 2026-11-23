@@ -16,11 +16,12 @@
 |---|---|
 | Cơ bản | GND, điện trở, tụ, cuộn cảm, nguồn áp DC, máy phát sóng (sin/vuông/tam giác/răng cưa), nguồn dòng, công tắc, biến trở |
 | Bán dẫn | Diode chỉnh lưu (1N4148, 1N4007), Schottky, Zener, LED (5 màu), BJT NPN/PNP (2N2222, 2N3904, BC547, 2N3906…), MOSFET kênh N/P (2N7000, IRF540, BS250…), JFET kênh N/P, Thyristor (SCR) |
+| Op-amp & Logic | Op-amp (LM741, TL081, LM358 – có bão hòa và GBW), cổng NOT/AND/OR/NAND/NOR/XOR, đầu vào logic 0/1, đèn báo logic |
 | Đo lường | Đầu dò dao động ký, vôn kế, ampe kế |
 
 **Đặc tuyến linh kiện** – vẽ trực tiếp từ mô hình: đặc tuyến V–A diode (tuyến tính/log), họ đặc tuyến ra và đặc tuyến vào BJT, đặc tuyến ra và truyền đạt MOSFET/JFET, **đường tải tĩnh và điểm Q**.
 
-**18 mạch ví dụ**: diode phân cực, LED, chỉnh lưu nửa chu kỳ, chỉnh lưu cầu + tụ lọc, ổn áp Zener, mạch xén, mạch ghim, nhân đôi điện áp, vẽ đặc tuyến Zener bằng XY, vùng làm việc BJT, BJT làm khóa, khuếch đại E chung, gương dòng, dao động đa hài, MOSFET làm khóa, cổng đảo CMOS (VTC), khuếch đại JFET, SCR mạch chốt.
+**26 mạch ví dụ**: diode phân cực, LED, chỉnh lưu nửa chu kỳ, chỉnh lưu cầu + tụ lọc, ổn áp Zener, mạch xén, mạch ghim, nhân đôi điện áp, vẽ đặc tuyến Zener bằng XY, vùng làm việc BJT, BJT làm khóa, khuếch đại E chung, gương dòng, dao động đa hài, MOSFET làm khóa, cổng đảo CMOS (VTC), khuếch đại JFET, SCR mạch chốt; op-amp: khuếch đại đảo/không đảo, Schmitt trigger (vòng trễ XY), tích phân, dao động xung vuông; logic: các cổng cơ bản, bộ cộng bán phần, mạch chốt SR.
 
 ## Chạy thử
 
@@ -31,13 +32,16 @@ python3 -m http.server 8000
 # mở http://localhost:8000
 ```
 
-**Đưa lên mạng (GitHub Pages):** Settings → Pages → Source: *Deploy from a branch* → chọn nhánh `main`, thư mục `/ (root)`.
+**Đưa lên mạng (GitHub Pages):** repo đã có workflow `.github/workflows/deploy.yml`. Vào *Settings → Pages → Source* chọn **GitHub Actions**. Mỗi lần push lên `main`, workflow sẽ:
+1. chạy `node tools/test.js` (lỗi thì không deploy);
+2. gắn `?v=<mã commit>` vào mọi tệp CSS/JS (**cache-busting**) để trình duyệt luôn tải bản mới;
+3. deploy lên `https://<tên-tài-khoản>.github.io/machsim/`.
 
 ## Mô hình & lõi giải
 
 - Phân tích nút cải tiến (MNA), giải hệ phi tuyến bằng Newton–Raphson có giới hạn bước tiếp giáp (pnjlim) và giới hạn V_GS.
 - Tích phân thời gian: Euler lùi (mặc định, ổn định) hoặc hình thang; tự chia nhỏ bước khi không hội tụ.
-- Diode: phương trình Shockley + đánh thủng ngược. BJT: Ebers–Moll + hiệu ứng Early. MOSFET/JFET: Shichman–Hodges (level 1). SCR: mô hình hai transistor PNP–NPN. BJT/FET có điện dung tiếp giáp nhỏ để mô phỏng chuyển mạch.
+- Diode: phương trình Shockley + đánh thủng ngược. BJT: Ebers–Moll + hiệu ứng Early. MOSFET/JFET: Shichman–Hodges (level 1). SCR: mô hình hai transistor PNP–NPN. Op-amp: khuếch đại A với một cực (GBW) và bão hòa mềm. Cổng logic: hàm chuyển trơn quanh ngưỡng V_H/2, đầu ra 50 Ω. BJT/FET có điện dung tiếp giáp nhỏ để mô phỏng chuyển mạch.
 - Các mô hình đã được đơn giản hoá cho mục đích học tập.
 
 ## Cấu trúc
@@ -67,6 +71,6 @@ Kiểm tra mọi mạch ví dụ (không có cực hở, mô phỏng hội tụ)
 
 ## Hướng phát triển
 
-- Op-amp, cổng logic, transistor quang, opto, TRIAC/DIAC.
+- Flip-flop D/JK, bộ đếm, IC 555, transistor quang, opto, TRIAC/DIAC.
 - Phân tích AC (đáp ứng tần số, Bode), quét DC.
 - Mô hình nhiệt độ, điện trở nối tiếp của diode/BJT.

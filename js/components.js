@@ -223,6 +223,16 @@
     g.restore();
   }
 
+  // Chữ luôn đứng thẳng dù linh kiện bị xoay/lật
+  function textUp(g, el, str, x, y, color, size) {
+    const c = el && el.comp;
+    g.save();
+    g.translate(x, y);
+    if (c) { if (c.flip) g.scale(1, -1); g.rotate((-(c.rot & 3) * Math.PI) / 2); }
+    textC(g, str, 0, 0, color, size);
+    g.restore();
+  }
+
   const TWO = [[0, 0], [4, 0]];
   const BOX2 = [0, -0.9, 4, 0.9];
   const PATH2 = [[0, [[0, 0], [4, 0]]]];
@@ -289,10 +299,10 @@
 
   def('C', {
     name: 'Tụ điện', cat: 'basic', prefix: 'C', terms: TWO, bbox: BOX2, paths: PATH2,
-    params: [{ k: 'C', label: 'Điện dung', unit: 'F', def: '10u' }],
-    compile: (p) => ({ C: Math.max(MS.parseSI(p.C) || 1e-6, 1e-18) }),
+    params: [{ k: 'C', label: 'Điện dung', unit: 'F', def: '10u' }, { k: 'ic', label: 'Điện áp ban đầu (khi không khởi động từ DC)', unit: 'V', def: '0' }],
+    compile: (p) => ({ C: Math.max(MS.parseSI(p.C) || 1e-6, 1e-18), ic: MS.parseSI(p.ic) || 0 }),
     value: (p) => fmt(MS.parseSI(p.C), 'F'),
-    init(el) { el.s.v = 0; el.s.i = 0; },
+    init(el) { el.s.v = el.P.ic || 0; el.s.i = 0; },
     fromDC(el, x) { el.s.v = X(x, el.u[0]) - X(x, el.u[1]); el.s.i = 0; },
     stamp(el, c) {
       if (c.mode === 'dc') return;
@@ -908,10 +918,234 @@
     theory: 'Thyristor (SCR) gồm 4 lớp p–n–p–n, tương đương một cặp transistor PNP–NPN hồi tiếp dương. Khi được <b>kích</b> bằng xung dòng vào cực G (I<sub>G</sub> > I<sub>GT</sub>), SCR chuyển sang dẫn và <b>tự giữ (chốt)</b> kể cả khi bỏ xung kích. SCR chỉ tắt khi dòng anode giảm dưới dòng duy trì I<sub>H</sub> (ví dụ ngắt mạch, hoặc nguồn AC đi qua 0).'
   });
 
+  /* ===================== OP-AMP ===================== */
+  const sp = (x) => (x > 30 ? x : Math.log1p(Math.exp(x)));
+  const sig = (x) => 1 / (1 + Math.exp(-MS.clamp(x, -60, 60)));
+  // Giới hạn mềm u trong [vn, vp] (độ cong w) — trả về [giá trị, đạo hàm]
+  function softClamp(u, vn, vp, w) {
+    const g1 = vn + w * sp((u - vn) / w), d1 = sig((u - vn) / w);
+    return [vp - w * sp((vp - g1) / w), sig((vp - g1) / w) * d1];
+  }
+  const OPAMP_PRESETS = {
+    'LM741': { A: '200k', gbw: '1Meg', vp: '13.5', vn: '-13.5', vos: '0' },
+    'TL081': { A: '200k', gbw: '3Meg', vp: '13.5', vn: '-13.5', vos: '0' },
+    'LM358 (nguồn đơn 5 V)': { A: '100k', gbw: '1Meg', vp: '3.5', vn: '0', vos: '0' },
+    'Lý tưởng hoá': { A: '1Meg', gbw: '100Meg', vp: '14', vn: '-14', vos: '0' }
+  };
+  function opampU(el, vd, c) {
+    const P = el.P;
+    if (c.mode === 'dc') return [P.A * vd, P.A];
+    const a = c.h * P.wp;
+    return [(el.s.u + a * P.A * vd) / (1 + a), (a * P.A) / (1 + a)];
+  }
+  def('OPAMP', {
+    name: 'Op-amp (KĐ thuật toán)', cat: 'digital', prefix: 'U', terms: [[0, -1], [0, 1], [4, 0]], termNames: ['−', '+', 'Ra'], bbox: [0, -2.1, 4, 2.1],
+    paths: [[2, [[4, 0], [3.6, 0]]]], nonlinear: true, branches: 1, outTerm: 2, labelTop: true, implicitGround: true,
+    presets: OPAMP_PRESETS,
+    params: [
+      { k: 'model', label: 'Mẫu linh kiện', type: 'sel', opts: Object.keys(OPAMP_PRESETS).map((k) => [k, k]).concat([['custom', 'Tùy chỉnh']]), def: 'LM741', preset: true },
+      { k: 'A', label: 'Hệ số khuếch đại vòng hở A', unit: '', def: '200k' },
+      { k: 'gbw', label: 'Tích độ lợi–băng thông GBW', unit: 'Hz', def: '1Meg' },
+      { k: 'vp', label: 'Điện áp ra bão hòa dương +V_sat', unit: 'V', def: '13.5' },
+      { k: 'vn', label: 'Điện áp ra bão hòa âm −V_sat', unit: 'V', def: '-13.5' },
+      { k: 'vos', label: 'Điện áp lệch đầu vào V_os', unit: 'V', def: '0' }
+    ],
+    compile(p) {
+      const A = Math.max(MS.parseSI(p.A) || 2e5, 1);
+      const gbw = Math.max(MS.parseSI(p.gbw) || 1e6, 1);
+      let vp = MS.parseSI(p.vp), vn = MS.parseSI(p.vn);
+      if (!isFinite(vp)) vp = 13.5;
+      if (!isFinite(vn)) vn = -13.5;
+      if (vn > vp - 0.1) vn = vp - 0.1;
+      return { A, wp: (2 * Math.PI * gbw) / A, vp, vn, vos: MS.parseSI(p.vos) || 0 };
+    },
+    value: (p) => (p.model !== 'custom' ? p.model.replace(/ \(.*\)/, '') : 'Op-amp'),
+    init(el) { el.s.u = 0; },
+    fromDC(el, x) { const P = el.P; el.s.u = MS.clamp(P.A * (X(x, el.u[1]) - X(x, el.u[0]) + P.vos), P.vn - 0.5, P.vp + 0.5); },
+    stamp(el, c) {
+      const [inn, inp, out] = el.u, br = el.br[0], P = el.P;
+      const vd = c.v(inp) - c.v(inn) + P.vos;
+      const [u, du] = opampU(el, vd, c);
+      const [vo, dvo] = softClamp(u, P.vn, P.vp, 0.05);
+      const g = dvo * du;
+      c.a(out, br, 1);
+      c.a(br, out, 1); c.a(br, inp, -g); c.a(br, inn, g);
+      c.rhs(br, vo - g * (vd - P.vos));
+    },
+    accept(el, c) {
+      const P = el.P;
+      const vd = c.v(el.u[1]) - c.v(el.u[0]) + P.vos;
+      el.s.u = MS.clamp(opampU(el, vd, c)[0], P.vn - 0.5, P.vp + 0.5);
+    },
+    currents(el, x) { return [0, 0, x[el.br[0]]]; },
+    info(el, eng) {
+      const x = eng.x, P = el.P;
+      const vm = X(x, el.u[0]), vpl = X(x, el.u[1]), vo = X(x, el.u[2]);
+      const st = vo > P.vp - 0.05 ? 'Bão hòa dương (+V_sat)' : vo < P.vn + 0.05 ? 'Bão hòa âm (−V_sat)' : 'Tuyến tính (V+ ≈ V−)';
+      return [['V+ (không đảo)', fmt(vpl, 'V')], ['V− (đảo)', fmt(vm, 'V')], ['V_d = V+ − V−', fmt(vpl - vm, 'V')], ['V_ra', fmt(vo, 'V')], ['Dòng ra', fmt(-x[el.br[0]], 'A')], ['Trạng thái', st]];
+    },
+    draw(g, el, o) {
+      line(g, [0, -1, 0.6, -1], o.col(0));
+      line(g, [0, 1, 0.6, 1], o.col(1));
+      line(g, [3.6, 0, 4, 0], o.col(2));
+      g.beginPath(); g.moveTo(0.6, -2); g.lineTo(0.6, 2); g.lineTo(3.6, 0); g.closePath();
+      g.fillStyle = o.fillBody; g.fill();
+      g.strokeStyle = o.body; g.lineWidth = 0.1; g.stroke();
+      textC(g, '−', 1.05, -1, o.body, 0.8);
+      textC(g, '+', 1.05, 1, o.body, 0.8);
+    },
+    theory: 'Bộ khuếch đại thuật toán: <b>V<sub>ra</sub> = A·(V<sub>+</sub> − V<sub>−</sub>)</b>, giới hạn trong khoảng ±V<sub>sat</sub> (nguồn nuôi được ngầm định). Khi có <b>hồi tiếp âm</b>, op-amp tự điều chỉnh để <b>V<sub>+</sub> ≈ V<sub>−</sub></b> (ngắn mạch ảo) và dòng vào hai cực ≈ 0. Mạch đảo: A<sub>v</sub> = −R<sub>f</sub>/R<sub>1</sub>; không đảo: A<sub>v</sub> = 1 + R<sub>f</sub>/R<sub>1</sub>. Không có hồi tiếp (hoặc hồi tiếp dương) op-amp làm việc như <b>bộ so sánh</b>. Băng thông giới hạn bởi GBW: f<sub>c</sub> ≈ GBW/A<sub>v</sub>. Chân: − (trên), + (dưới); nhấn <b>F</b> để đổi chỗ.'
+  });
+
+  /* ===================== CỔNG LOGIC ===================== */
+  const GATE_FN = {
+    AND: (s) => [s[0] * s[1], [s[1], s[0]]],
+    OR: (s) => [1 - (1 - s[0]) * (1 - s[1]), [1 - s[1], 1 - s[0]]],
+    XOR: (s) => [s[0] + s[1] - 2 * s[0] * s[1], [1 - 2 * s[1], 1 - 2 * s[0]]],
+    NAND: (s) => [1 - s[0] * s[1], [-s[1], -s[0]]],
+    NOR: (s) => [(1 - s[0]) * (1 - s[1]), [-(1 - s[1]), -(1 - s[0])]],
+    NOT: (s) => [1 - s[0], [-1]]
+  };
+  const GATE_INFO = {
+    AND: ['Cổng AND', 'Y = A·B', 'Ra 1 chỉ khi <b>tất cả</b> đầu vào bằng 1.', ['0', '0', '0', '1']],
+    OR: ['Cổng OR', 'Y = A + B', 'Ra 1 khi <b>có ít nhất một</b> đầu vào bằng 1.', ['0', '1', '1', '1']],
+    XOR: ['Cổng XOR', 'Y = A ⊕ B', 'Ra 1 khi hai đầu vào <b>khác nhau</b> (cộng nhị phân không nhớ).', ['0', '1', '1', '0']],
+    NAND: ['Cổng NAND', 'Y = (A·B)̅', 'Đảo của AND. Là cổng <b>vạn năng</b>: có thể ghép NAND để tạo mọi cổng khác.', ['1', '1', '1', '0']],
+    NOR: ['Cổng NOR', 'Y = (A + B)̅', 'Đảo của OR; cũng là cổng vạn năng.', ['1', '0', '0', '0']],
+    NOT: ['Cổng NOT (đảo)', 'Y = A̅', 'Đảo mức logic: 0 → 1, 1 → 0.', null]
+  };
+  function gateTheory(t) {
+    const [, eq, txt, tt] = GATE_INFO[t];
+    let h = `Biểu thức: <b>${eq}</b>. ${txt}`;
+    if (tt) h += `<table class="tt"><tr><th>A</th><th>B</th><th>Y</th></tr>${[[0, 0], [0, 1], [1, 0], [1, 1]].map(([a, b], i) => `<tr><td>${a}</td><td>${b}</td><td>${tt[i]}</td></tr>`).join('')}</table>`;
+    else h += '<table class="tt"><tr><th>A</th><th>Y</th></tr><tr><td>0</td><td>1</td></tr><tr><td>1</td><td>0</td></tr></table>';
+    return h + 'Mô hình: đầu vào trở kháng cao, ngưỡng V<sub>H</sub>/2; đầu ra là nguồn áp 0/V<sub>H</sub> qua điện trở ra 50 Ω. Đầu vào để hở được coi là mức 0.';
+  }
+  function drawGateBody(g, o, t) {
+    const orLike = t === 'OR' || t === 'NOR' || t === 'XOR';
+    const bubble = t === 'NAND' || t === 'NOR';
+    line(g, [0, -1, 0.8, -1], o.col(0));
+    line(g, [0, 1, 0.8, 1], o.col(1));
+    g.beginPath();
+    if (orLike) {
+      g.moveTo(0.6, -1.5); g.quadraticCurveTo(2.4, -1.5, 3.5, 0); g.quadraticCurveTo(2.4, 1.5, 0.6, 1.5); g.quadraticCurveTo(1.3, 0, 0.6, -1.5);
+    } else {
+      g.moveTo(0.8, -1.5); g.lineTo(2, -1.5); g.arc(2, 0, 1.5, -Math.PI / 2, Math.PI / 2); g.lineTo(0.8, 1.5); g.closePath();
+    }
+    g.fillStyle = o.fillBody; g.fill();
+    g.strokeStyle = o.body; g.lineWidth = 0.1; g.stroke();
+    if (t === 'XOR') { g.beginPath(); g.moveTo(0.25, 1.5); g.quadraticCurveTo(0.95, 0, 0.25, -1.5); g.stroke(); }
+    if (bubble) { circle(g, 3.68, 0, 0.18, o.body, 0.08, o.fillBody); line(g, [3.86, 0, 4, 0], o.col(2)); }
+    else line(g, [3.5, 0, 4, 0], o.col(2));
+  }
+  function gateDef(t) {
+    const one = t === 'NOT';
+    const nIn = one ? 1 : 2;
+    const terms = one ? [[0, 0], [4, 0]] : [[0, -1], [0, 1], [4, 0]];
+    const outIdx = nIn;
+    def(t, {
+      name: GATE_INFO[t][0], cat: 'digital', prefix: 'G', terms, termNames: one ? ['A', 'Y'] : ['A', 'B', 'Y'],
+      bbox: one ? [0, -1.1, 4, 1.1] : [0, -1.6, 4, 1.6], paths: [[outIdx, [[4, 0], [3.4, 0]]]], nonlinear: true, outTerm: outIdx, labelTop: true, implicitGround: true,
+      params: [{ k: 'VH', label: 'Mức logic cao V_H (nguồn nuôi)', unit: 'V', def: '5' }],
+      compile: (p) => { const VH = MS.parseSI(p.VH) || 5; return { VH, w: VH / 60, R: 50 }; },
+      value: (p) => (MS.parseSI(p.VH) !== 5 ? fmt(MS.parseSI(p.VH), 'V') : ''),
+      caps: (el) => [[el.u[outIdx], -1, 10e-12]],
+      stamp(el, c) {
+        const P = el.P, o = el.u[outIdx];
+        const vs = [], s = [], ds = [];
+        for (let i = 0; i < nIn; i++) {
+          vs.push(c.v(el.u[i]));
+          const q = sig((vs[i] - P.VH / 2) / P.w);
+          s.push(q); ds.push((q * (1 - q)) / P.w);
+        }
+        const [F, dF] = GATE_FN[t](s);
+        const Vt = P.VH * F;
+        const terms = [[1 / P.R, o, -1]];
+        let Ic = -Vt / P.R;
+        for (let i = 0; i < nIn; i++) {
+          const k = P.VH * dF[i] * ds[i];
+          terms.push([-k / P.R, el.u[i], -1]);
+          Ic += (k * vs[i]) / P.R;
+        }
+        c.cur(o, Ic, terms);
+      },
+      currents(el, x) {
+        const P = el.P, s = [];
+        for (let i = 0; i < nIn; i++) s.push(sig((X(x, el.u[i]) - P.VH / 2) / P.w));
+        const r = new Array(nIn + 1).fill(0);
+        r[outIdx] = (X(x, el.u[outIdx]) - P.VH * GATE_FN[t](s)[0]) / P.R;
+        return r;
+      },
+      info(el, eng) {
+        const P = el.P, x = eng.x, lv = (v) => (v > P.VH / 2 ? '1' : '0');
+        const r = [];
+        for (let i = 0; i < nIn; i++) { const v = X(x, el.u[i]); r.push([`Vào ${'AB'[i]}`, `${fmt(v, 'V')} (mức ${lv(v)})`]); }
+        const vo = X(x, el.u[outIdx]);
+        r.push(['Ra Y', `${fmt(vo, 'V')} (mức ${lv(vo)})`]);
+        return r;
+      },
+      draw(g, el, o) {
+        if (one) {
+          line(g, [0, 0, 1, 0], o.col(0));
+          g.beginPath(); g.moveTo(1, -1); g.lineTo(1, 1); g.lineTo(3, 0); g.closePath();
+          g.fillStyle = o.fillBody; g.fill(); g.strokeStyle = o.body; g.lineWidth = 0.1; g.stroke();
+          circle(g, 3.18, 0, 0.18, o.body, 0.08, o.fillBody);
+          line(g, [3.36, 0, 4, 0], o.col(1));
+        } else drawGateBody(g, o, t);
+      },
+      theory: gateTheory(t)
+    });
+  }
+  ['AND', 'OR', 'NAND', 'NOR', 'XOR', 'NOT'].forEach(gateDef);
+
+  def('LOGICIN', {
+    name: 'Đầu vào logic (công tắc 0/1)', cat: 'digital', prefix: 'IN', terms: [[0, 0]], bbox: [-2.5, -0.8, 0.2, 0.8], paths: [[0, [[0, 0], [-0.6, 0]]]],
+    branches: 1, outTerm: 0, toggleKey: 'high', clickable: true, implicitGround: true,
+    params: [{ k: 'high', label: 'Mức cao (1)', type: 'bool', def: false }, { k: 'VH', label: 'Điện áp mức 1', unit: 'V', def: '5' }],
+    compile: (p) => ({ V: p.high ? MS.parseSI(p.VH) || 5 : 0 }),
+    value: () => '',
+    stamp(el, c) { c.V(el.br[0], el.u[0], -1, el.P.V * c.scale); },
+    currents(el, x) { return [x[el.br[0]]]; },
+    info: (el, eng) => [['Mức logic', el.P.V > 0 ? '1 (cao)' : '0 (thấp)'], ['Điện áp', fmt(X(eng.x, el.u[0]), 'V')]],
+    draw(g, el, o) {
+      const hi = el.comp ? !!el.comp.p.high : false;
+      line(g, [-0.6, 0, 0, 0], o.col(0));
+      g.fillStyle = hi ? '#2fbf6a' : o.fillBody;
+      g.fillRect(-2.4, -0.7, 1.8, 1.4);
+      g.strokeStyle = o.body; g.lineWidth = 0.1; g.strokeRect(-2.4, -0.7, 1.8, 1.4);
+      textUp(g, el, hi ? '1' : '0', -1.5, 0.04, hi ? '#04140a' : o.body, 1);
+    },
+    theory: 'Nguồn tín hiệu logic: mức <b>1</b> = V<sub>H</sub> (mặc định 5 V), mức <b>0</b> = 0 V so với đất. <b>Nhấp vào ô để đổi 0/1.</b>'
+  });
+
+  def('LOGICOUT', {
+    name: 'Đèn báo logic', cat: 'digital', prefix: 'OUT', terms: [[0, 0]], bbox: [-0.2, -0.8, 2.1, 0.8], paths: [], outTerm: 0, implicitGround: true,
+    params: [{ k: 'VH', label: 'Mức logic cao V_H (ngưỡng = V_H/2)', unit: 'V', def: '5' }],
+    compile: (p) => ({ VH: MS.parseSI(p.VH) || 5 }),
+    value: () => '',
+    stamp() {}, currents: () => [0],
+    info: (el, eng) => { const v = X(eng.x, el.u[0]); return [['Điện áp', fmt(v, 'V')], ['Mức logic', v > el.P.VH / 2 ? '1 (cao)' : '0 (thấp)']]; },
+    draw(g, el, o) {
+      const v = o.volt ? o.volt(0) : 0;
+      const VH = el.P ? el.P.VH : 5;
+      const hi = v > VH / 2;
+      line(g, [0, 0, 0.65, 0], o.col(0));
+      if (hi) {
+        const gr = g.createRadialGradient(1.35, 0, 0.1, 1.35, 0, 1.6);
+        gr.addColorStop(0, 'rgba(255,69,58,0.8)'); gr.addColorStop(1, 'rgba(255,69,58,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(1.35, 0, 1.6, 0, Math.PI * 2); g.fill();
+      }
+      circle(g, 1.35, 0, 0.68, o.body, 0.1, hi ? '#ff453a' : o.fillBody);
+      textUp(g, el, hi ? '1' : '0', 1.35, 0.04, hi ? '#fff' : o.body, 0.85);
+    },
+    theory: 'Đèn báo mức logic: sáng (1) khi điện áp vào lớn hơn V<sub>H</sub>/2, tắt (0) khi nhỏ hơn. Trở kháng vào vô cùng lớn.'
+  });
+
   /* ===================== Danh mục cho bảng linh kiện ===================== */
   MS.CATEGORIES = [
     { id: 'basic', name: 'Cơ bản', items: ['GND', 'R', 'C', 'L', 'V', 'AC', 'I', 'SW', 'POT'] },
     { id: 'semi', name: 'Bán dẫn', items: ['D', 'DZ', 'DS', 'LED', 'NPN', 'PNP', 'NMOS', 'PMOS', 'NJF', 'PJF', 'SCR'] },
+    { id: 'digital', name: 'Op-amp & Logic', items: ['OPAMP', 'NOT', 'AND', 'OR', 'NAND', 'NOR', 'XOR', 'LOGICIN', 'LOGICOUT'] },
     { id: 'meter', name: 'Đo lường', items: ['PROBE', 'VM', 'AM'] }
   ];
 

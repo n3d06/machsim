@@ -456,6 +456,197 @@
     sim: { dt: 1e-4, speed: 0.05 }
   });
 
+  /* ---------- Op-amp ---------- */
+  ex({
+    id: 'opamp-inv', group: 'Op-amp', name: 'Khuếch đại đảo',
+    desc: 'Hồi tiếp âm qua R<sub>f</sub> làm V<sub>−</sub> ≈ V<sub>+</sub> = 0 (đất ảo). Hệ số khuếch đại <b>A<sub>v</sub> = −R<sub>f</sub>/R<sub>1</sub> = −10</b>: tín hiệu ra lớn gấp 10 lần và ngược pha. Thử tăng biên độ vào lên 2 V để thấy đầu ra bị xén ở ±13,5 V (bão hòa).',
+    build(b) {
+      b.c('AC', 'Vs', 2, 6, 1, { amp: '1', freq: '1k' });
+      b.w([2, 6], [2, 5], [4, 5]);
+      b.c('R', 'R1', 4, 5, 0, { R: '1k' });
+      b.w([8, 5], [10, 5]);
+      b.c('OPAMP', 'U1', 10, 6, 0, { model: 'LM741' });
+      b.w([9, 5], [9, 1], [10, 1]);
+      b.c('R', 'Rf', 10, 1, 0, { R: '10k' });
+      b.w([14, 1], [15, 1], [15, 6]);
+      b.w([14, 6], [17, 6]);
+      b.c('R', 'RL', 17, 6, 1, { R: '10k' });
+      b.w([10, 7], [10, 10]);
+      b.w([2, 10], [10, 10], [17, 10]);
+      b.c('GND', 'GND', 2, 10, 0);
+      b.c('PROBE', 'Vào', 2, 5, 0);
+      b.c('PROBE', 'Ra', 17, 6, 0);
+    },
+    scope: ['Vào', 'Ra'],
+    sim: { dt: 2e-6, speed: 1e-3, window: 3e-3 }
+  });
+
+  ex({
+    id: 'opamp-noninv', group: 'Op-amp', name: 'Khuếch đại không đảo',
+    desc: 'Tín hiệu vào cực +, hồi tiếp âm qua cầu chia R<sub>f</sub>–R<sub>1</sub>. Hệ số khuếch đại <b>A<sub>v</sub> = 1 + R<sub>f</sub>/R<sub>1</sub> = 11</b>, cùng pha với tín hiệu vào, trở kháng vào rất lớn. Thay R<sub>f</sub> = 0 Ω (hoặc rất nhỏ) để có mạch đệm (voltage follower) A<sub>v</sub> = 1.',
+    build(b) {
+      b.c('AC', 'Vs', 2, 10, 1, { amp: '0.5', freq: '1k' });
+      b.w([2, 10], [2, 5], [10, 5]);
+      b.c('OPAMP', 'U1', 10, 6, 0, { model: 'LM741' }, true);
+      b.w([10, 7], [9, 7], [9, 10]);
+      b.c('R', 'R1', 9, 10, 1, { R: '1k' });
+      b.w([9, 10], [10, 10]);
+      b.c('R', 'Rf', 10, 10, 0, { R: '10k' });
+      b.w([14, 10], [15, 10], [15, 6]);
+      b.w([14, 6], [17, 6]);
+      b.c('R', 'RL', 17, 6, 1, { R: '10k' });
+      b.w([17, 10], [17, 14]);
+      b.w([2, 14], [9, 14], [17, 14]);
+      b.c('GND', 'GND', 2, 14, 0);
+      b.c('PROBE', 'Vào', 2, 5, 0);
+      b.c('PROBE', 'Ra', 17, 6, 0);
+    },
+    scope: ['Vào', 'Ra'],
+    sim: { dt: 2e-6, speed: 1e-3, window: 3e-3 }
+  });
+
+  ex({
+    id: 'schmitt', group: 'Op-amp', name: 'Mạch so sánh có trễ (Schmitt trigger)',
+    desc: 'Hồi tiếp <b>dương</b> qua R1–R2 tạo hai ngưỡng chuyển mạch ±V<sub>sat</sub>·R2/(R1+R2) ≈ ±6,75 V. Đầu ra chỉ có hai mức ±13,5 V. Dao động ký ở chế độ <b>XY</b> (X = vào, Y = ra) vẽ ra <b>vòng trễ</b> đặc trưng. Mạch giúp chống nhiễu khi so sánh tín hiệu chậm.',
+    build(b) {
+      b.c('AC', 'Vs', 2, 10, 1, { wave: 'triangle', amp: '10', freq: '100' });
+      b.w([2, 10], [2, 5], [10, 5]);
+      b.c('OPAMP', 'U1', 10, 6, 0, { model: 'LM741' });
+      b.w([10, 7], [9, 7], [9, 10]);
+      b.c('R', 'R2', 9, 10, 1, { R: '10k' });
+      b.w([9, 10], [10, 10]);
+      b.c('R', 'R1', 10, 10, 0, { R: '10k' });
+      b.w([14, 10], [15, 10], [15, 6]);
+      b.w([14, 6], [17, 6]);
+      b.c('R', 'RL', 17, 6, 1, { R: '10k' });
+      b.w([17, 10], [17, 14]);
+      b.w([2, 14], [9, 14], [17, 14]);
+      b.c('GND', 'GND', 2, 14, 0);
+      b.c('PROBE', 'Vào', 2, 5, 0);
+      b.c('PROBE', 'Ra', 17, 6, 0);
+    },
+    scope: ['Vào', 'Ra'],
+    xy: true,
+    sim: { dt: 1e-5, speed: 0.01, window: 0.02 }
+  });
+
+  ex({
+    id: 'integrator', group: 'Op-amp', name: 'Mạch tích phân (vuông → tam giác)',
+    desc: 'Tụ C ở nhánh hồi tiếp: <b>V<sub>ra</sub> = −(1/RC)∫V<sub>vào</sub>dt</b>. Sóng vuông vào được tích phân thành sóng tam giác, độ dốc = V<sub>vào</sub>/(R<sub>1</sub>C) = 10 V/ms. R<sub>f</sub> lớn mắc song song với C để tránh trôi điểm làm việc DC. Thử đổi sóng vào thành sin để thấy đầu ra là −cos (lệch pha 90°).',
+    build(b) {
+      b.c('AC', 'Vs', 2, 6, 1, { wave: 'square', amp: '1', freq: '1k' });
+      b.w([2, 6], [2, 5], [4, 5]);
+      b.c('R', 'R1', 4, 5, 0, { R: '1k' });
+      b.w([8, 5], [10, 5]);
+      b.c('OPAMP', 'U1', 10, 6, 0, { model: 'TL081' });
+      b.w([9, 5], [9, 1], [10, 1]);
+      b.c('C', 'C1', 10, 1, 0, { C: '100n' });
+      b.w([14, 1], [15, 1], [15, 6]);
+      b.w([9, 1], [9, -2], [10, -2]);
+      b.c('R', 'Rf', 10, -2, 0, { R: '100k' });
+      b.w([14, -2], [15, -2], [15, 1]);
+      b.w([14, 6], [17, 6]);
+      b.c('R', 'RL', 17, 6, 1, { R: '10k' });
+      b.w([10, 7], [10, 10]);
+      b.w([2, 10], [10, 10], [17, 10]);
+      b.c('GND', 'GND', 2, 10, 0);
+      b.c('PROBE', 'Vào', 2, 5, 0);
+      b.c('PROBE', 'Ra', 17, 6, 0);
+    },
+    scope: ['Vào', 'Ra'],
+    sim: { dt: 2e-6, speed: 1e-3, window: 3e-3 }
+  });
+
+  ex({
+    id: 'opamp-astable', group: 'Op-amp', name: 'Dao động tạo xung vuông (đa hài op-amp)',
+    desc: 'Mạch Schmitt trigger kết hợp mạch RC: tụ C nạp/xả qua R<sub>t</sub> giữa hai ngưỡng ±V<sub>sat</sub>/2, đầu ra lật trạng thái mỗi lần điện áp tụ chạm ngưỡng. Với R1 = R2: <b>f = 1/(2R<sub>t</sub>C·ln3) ≈ 455 Hz</b>. Quan sát điện áp tụ (dạng hàm mũ) và xung vuông đầu ra.',
+    build(b) {
+      b.c('OPAMP', 'U1', 10, 6, 0, { model: 'TL081' });
+      b.w([14, 6], [15, 6], [15, 1], [14, 1]);
+      b.c('R', 'Rt', 10, 1, 0, { R: '10k' });
+      b.w([10, 1], [9, 1], [9, 5], [10, 5]);
+      b.w([9, 5], [6, 5]);
+      b.c('C', 'C1', 6, 5, 1, { C: '100n', ic: '-3' });
+      b.w([6, 9], [6, 14]);
+      b.w([10, 7], [9, 7], [9, 10]);
+      b.c('R', 'R2', 9, 10, 1, { R: '10k' });
+      b.w([9, 10], [10, 10]);
+      b.c('R', 'R1', 10, 10, 0, { R: '10k' });
+      b.w([14, 10], [15, 10], [15, 6]);
+      b.w([15, 6], [18, 6]);
+      b.w([6, 14], [9, 14]);
+      b.c('GND', 'GND', 6, 14, 0);
+      b.c('PROBE', 'VC', 6, 5, 0);
+      b.c('PROBE', 'Ra', 18, 6, 0);
+    },
+    scope: ['VC', 'Ra'],
+    sim: { dt: 5e-6, speed: 2e-3, window: 6e-3, dcStart: false }
+  });
+
+  /* ---------- Logic ---------- */
+  ex({
+    id: 'gates', group: 'Logic số', name: 'Các cổng logic cơ bản',
+    desc: 'Hai đầu vào logic A, B cùng đưa vào bốn cổng AND, OR, XOR, NAND. <b>Nhấp vào ô 0/1</b> của A và B để đổi mức, quan sát đèn báo và đối chiếu với bảng chân lý (chọn từng cổng để xem bảng chân lý trong khung thuộc tính).',
+    build(b) {
+      b.c('LOGICIN', 'A', 4, 0, 1, { high: true });
+      b.c('LOGICIN', 'B', 8, 0, 1, { high: false });
+      b.w([4, 0], [4, 21]);
+      b.w([8, 0], [8, 23]);
+      const gates = ['AND', 'OR', 'XOR', 'NAND'];
+      gates.forEach((t, i) => {
+        const y = 4 + i * 6;
+        b.c(t, t, 10, y, 0);
+        b.w([4, y - 1], [10, y - 1]);
+        b.w([8, y + 1], [10, y + 1]);
+        b.w([14, y], [16, y]);
+        b.c('LOGICOUT', 'Y_' + t, 16, y, 0);
+      });
+    },
+    sim: { dt: 1e-5, speed: 1e-3 }
+  });
+
+  ex({
+    id: 'half-adder', group: 'Logic số', name: 'Bộ cộng bán phần (half adder)',
+    desc: 'Cộng hai bit A + B: <b>S = A ⊕ B</b> (tổng), <b>C = A·B</b> (số nhớ). Thử đủ 4 tổ hợp: 0+0 = 00, 0+1 = 01, 1+0 = 01, 1+1 = 10 (nhị phân, viết C S).',
+    build(b) {
+      b.c('LOGICIN', 'A', 4, 0, 1, { high: true });
+      b.c('LOGICIN', 'B', 8, 0, 1, { high: true });
+      b.w([4, 0], [4, 9]);
+      b.w([8, 0], [8, 11]);
+      b.c('XOR', 'XOR1', 10, 4, 0);
+      b.w([4, 3], [10, 3]);
+      b.w([8, 5], [10, 5]);
+      b.c('AND', 'AND1', 10, 10, 0);
+      b.w([4, 9], [10, 9]);
+      b.w([8, 11], [10, 11]);
+      b.w([14, 4], [16, 4]);
+      b.c('LOGICOUT', 'S', 16, 4, 0);
+      b.w([14, 10], [16, 10]);
+      b.c('LOGICOUT', 'C', 16, 10, 0);
+    },
+    sim: { dt: 1e-5, speed: 1e-3 }
+  });
+
+  ex({
+    id: 'sr-latch', group: 'Logic số', name: 'Mạch chốt SR dùng cổng NAND',
+    desc: 'Hai cổng NAND hồi tiếp chéo tạo phần tử nhớ 1 bit, tích cực mức thấp. <b>S̄ = 0</b> → Q = 1 (đặt); <b>R̄ = 0</b> → Q = 0 (xóa); <b>S̄ = R̄ = 1</b> → giữ nguyên trạng thái trước đó (nhớ). Thử: đặt R̄ = 1 (Q vẫn giữ 0), rồi S̄ = 0 → Q = 1, rồi S̄ = 1 → Q vẫn là 1.',
+    build(b) {
+      b.c('LOGICIN', 'S̄', 8, 3, 0, { high: true });
+      b.c('LOGICIN', 'R̄', 8, 11, 0, { high: false });
+      b.c('NAND', 'G1', 10, 4, 0);
+      b.c('NAND', 'G2', 10, 10, 0);
+      b.w([8, 3], [10, 3]);
+      b.w([8, 11], [10, 11]);
+      b.w([14, 4], [20, 4]);
+      b.w([16, 4], [16, 7], [9, 7], [9, 9], [10, 9]);
+      b.w([14, 10], [20, 10]);
+      b.w([18, 10], [18, 6], [9, 6], [9, 5], [10, 5]);
+      b.c('LOGICOUT', 'Q', 20, 4, 0);
+      b.c('LOGICOUT', 'Q̄', 20, 10, 0);
+    },
+    sim: { dt: 1e-5, speed: 1e-3 }
+  });
+
   MS.EXAMPLES = EX;
   MS.buildExample = function (e) {
     const b = builder();

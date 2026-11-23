@@ -188,6 +188,7 @@
     if (!c) return '?';
     if (c.type === 'PROBE') return c.name;
     const t = c.type;
+    if (DEFS[t].outTerm != null) return `${c.name}: ${s.kind === 'v' ? 'U ra' : 'I ra'}`;
     const v = /NPN|PNP/.test(t) ? 'U_CE' : /MOS|JF/.test(t) ? 'U_DS' : t === 'SCR' ? 'U_AK' : t === 'POT' ? 'U con chạy' : 'U';
     const i = /NPN|PNP/.test(t) ? 'I_C' : /MOS|JF/.test(t) ? 'I_D' : t === 'SCR' ? 'I_A' : t === 'POT' ? 'I con chạy' : 'I';
     return `${c.name}: ${s.kind === 'v' ? v : i}`;
@@ -197,6 +198,7 @@
     if (!c || !c._el || !S.eng) return 0;
     const el = c._el, n = el.n, x = S.eng.x;
     if (c.type === 'PROBE') return nodeV(n[0]);
+    if (el.def.outTerm != null) { const k = el.def.outTerm; return s.kind === 'v' ? nodeV(n[k]) : -el.def.currents(el, x)[k]; }
     if (c.type === 'POT') return s.kind === 'v' ? nodeV(n[2]) : el.def.currents(el, x)[2];
     if (el.def.terms.length === 3 && c.type !== 'SCR') return s.kind === 'v' ? nodeV(n[1]) - nodeV(n[2]) : el.def.currents(el, x)[1];
     return s.kind === 'v' ? nodeV(n[0]) - nodeV(n[1]) : el.def.currents(el, x)[0];
@@ -309,6 +311,7 @@
       body: ghost ? S.colors.body : sel ? S.colors.sel : S.colors.body,
       fillBody: S.colors.fill,
       ic: el && !ghost ? el.ic : null,
+      volt: (i) => (el && !ghost ? nodeV(el.n[i]) : 0),
       ansi: S.settings.ansi
     };
     if (c.type === 'PROBE') {
@@ -336,7 +339,7 @@
     let val = '';
     if (def.meter && c._el && S.eng) val = fmt(def.reading(c._el, S.eng), def.meter);
     else if (S.settings.showValues && def.value) val = def.value(c.p);
-    const horiz = def.terms.length === 2 && (c.rot & 1) === 0;
+    const horiz = (def.terms.length === 2 || def.labelTop) && (c.rot & 1) === 0;
     g.textBaseline = 'middle';
     if (horiz) {
       g.textAlign = 'center';
@@ -378,7 +381,7 @@
   }
   function drawCurrentArrows(c) {
     const el = c._el, def = DEFS[c.type];
-    if (!el || !el.ic || c.type === 'GND' || c.type === 'PROBE' || c.type === 'VM') return;
+    if (!el || !el.ic || c.type === 'GND' || c.type === 'PROBE' || c.type === 'VM' || c.type === 'LOGICOUT') return;
     const elec = S.settings.flow === 'electron';
     const col = elec ? S.colors.electron : S.colors.dot;
     const pre = elec ? 'e⁻ ' : 'I = ';
@@ -788,7 +791,8 @@
 
   function toggleSwitch(c) {
     pushHist();
-    c.p.closed = !c.p.closed;
+    const k = DEFS[c.type].toggleKey || 'closed';
+    c.p[k] = !c.p[k];
     recompile(c);
     commit(false);
     renderProps();
@@ -905,7 +909,7 @@
       const btn = (label, fn, cls) => { const b = document.createElement('button'); b.innerHTML = label; b.className = cls || ''; b.addEventListener('click', fn); acts.appendChild(b); };
       if (c.type !== 'GND') {
         btn('📈 Đo điện áp', () => addSignal(c.id, 'v'));
-        if (c.type !== 'PROBE' && c.type !== 'VM') btn('📈 Đo dòng điện', () => addSignal(c.id, 'i'));
+        if (c.type !== 'PROBE' && c.type !== 'VM' && c.type !== 'LOGICOUT') btn('📈 Đo dòng điện', () => addSignal(c.id, 'i'));
       }
       btn('⟳ Xoay (R)', () => rotateSel(1));
       btn('⇅ Lật (F)', () => flipSel());

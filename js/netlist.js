@@ -91,7 +91,8 @@
     const rootNode = new Map();
     let groundAuto = false;
     for (const c of comps) if (c.type === 'GND') rootNode.set(find(c._pts[0].id), 0);
-    if (!rootNode.size) {
+    const implicitGnd = comps.some((c) => DEFS[c.type].implicitGround);
+    if (!rootNode.size && !implicitGnd) {
       const src = comps.find((c) => c.type === 'V' || c.type === 'AC') || comps.find((c) => DEFS[c.type].terms.length > 1);
       if (src) { rootNode.set(find(src._pts[src._pts.length > 1 ? 1 : 0].id), 0); groundAuto = true; }
     }

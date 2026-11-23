@@ -142,5 +142,59 @@ console.log('\n— Kiểm tra hành vi —');
   ok(a > -0.85 && a < -0.5 && b < 0.85 && b > 0.5, 'xén sai');
 }
 
+{
+  const s = setup('opamp-inv');
+  const [a, b] = pp(() => s.V('Ra'), 0.002, 0.004, s);
+  console.log('KĐ đảo: Vout', fmt(a, 'V'), '…', fmt(b, 'V'));
+  ok(Math.abs(b - 10) < 0.3 && Math.abs(a + 10) < 0.3, 'KĐ đảo sai');
+}
+{
+  const s = setup('opamp-noninv');
+  const [a, b] = pp(() => s.V('Ra'), 0.002, 0.004, s);
+  console.log('KĐ không đảo: Vout', fmt(a, 'V'), '…', fmt(b, 'V'));
+  ok(Math.abs(b - 5.5) < 0.2, 'KĐ không đảo sai');
+}
+{
+  const s = setup('schmitt');
+  let up = null, dn = null, last = null;
+  s.runTo(0.04, () => { const vo = s.V('Ra'), vi = s.V('Vào'); if (last !== null) { if (last > 0 && vo < 0) dn = vi; if (last < 0 && vo > 0) up = vi; } last = vo; });
+  console.log('Schmitt: ngưỡng lật xuống', fmt(dn, 'V'), ', lật lên', fmt(up, 'V'));
+  ok(dn > 6 && dn < 7.5 && up < -6 && up > -7.5, 'Schmitt sai');
+}
+{
+  const s = setup('integrator');
+  const [a, b] = pp(() => s.V('Ra'), 0.05, 0.052, s);
+  console.log('Tích phân: Vout', fmt(a, 'V'), '…', fmt(b, 'V'));
+  ok(b - a > 4 && b - a < 6, 'tích phân sai');
+}
+{
+  const s = setup('opamp-astable');
+  let last = null, flips = 0;
+  s.runTo(0.012, () => { const v = s.V('Ra'); if (last !== null && Math.sign(v) !== Math.sign(last)) flips++; last = v; });
+  console.log('Op-amp đa hài: số lần lật trong 12 ms =', flips, '(f ≈', (flips / 2 / 0.012).toFixed(0), 'Hz)');
+  ok(flips >= 8 && flips <= 14, 'op-amp đa hài sai');
+}
+{
+  const s = setup('gates');
+  const lv = (n) => (s.V(n) > 2.5 ? 1 : 0);
+  const res = [];
+  for (const [a, b] of [[0, 0], [0, 1], [1, 0], [1, 1]]) {
+    s.C('A').p.high = !!a; s.C('A')._el.P = s.C('A')._el.def.compile(s.C('A').p);
+    s.C('B').p.high = !!b; s.C('B')._el.P = s.C('B')._el.def.compile(s.C('B').p);
+    s.runTo(s.eng.t + 1e-4);
+    res.push(`${a}${b}:${lv('Y_AND')}${lv('Y_OR')}${lv('Y_XOR')}${lv('Y_NAND')}`);
+  }
+  console.log('Cổng (AND OR XOR NAND):', res.join(' '));
+  ok(res.join(' ') === '00:0001 01:0111 10:0111 11:1100', 'bảng chân lý sai');
+}
+{
+  const s = setup('sr-latch');
+  const set = (n, v) => { s.C(n).p.high = v; s.C(n)._el.P = s.C(n)._el.def.compile(s.C(n).p); s.runTo(s.eng.t + 1e-4); return s.V('Q') > 2.5 ? 1 : 0; };
+  s.runTo(1e-4);
+  const seq = [s.V('Q') > 2.5 ? 1 : 0, set('R̄', true), set('S̄', false), set('S̄', true), set('R̄', false), set('R̄', true)];
+  console.log('Chốt SR: Q =', seq.join(' → '));
+  ok(seq.join('') === '001100', 'chốt SR sai');
+}
+
 console.log(fail ? `\n${fail} lỗi` : '\nTất cả kiểm tra đạt');
 process.exit(fail ? 1 : 0);
