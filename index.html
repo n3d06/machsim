@@ -57,6 +57,9 @@
       <button id="toolRotate" title="Xoay (R)">⟳</button>
       <button id="toolDelete" title="Xóa (Delete)">🗑</button>
       <span class="sep"></span>
+      <button id="toolFlow" title="Đổi chiều hiển thị dòng điện">I Quy ước</button>
+      <button id="toolArrows" title="Hiện mũi tên và giá trị dòng điện cho mọi linh kiện">→ I</button>
+      <span class="sep"></span>
       <button id="toolZoomOut" title="Thu nhỏ (-)">−</button>
       <button id="toolFit" title="Vừa khung (Home)">⤢</button>
       <button id="toolZoomIn" title="Phóng to (+)">+</button>
@@ -102,6 +105,13 @@
     <label class="field field-check"><input type="checkbox" id="setDc"><span class="field-label">Khởi động từ điểm làm việc DC (tụ đã nạp sẵn)</span></label>
     <label class="field field-check"><input type="checkbox" id="setValues"><span class="field-label">Hiện giá trị linh kiện trên sơ đồ</span></label>
     <label class="field field-check"><input type="checkbox" id="setDots"><span class="field-label">Hiện chấm dòng điện chạy</span></label>
+    <label class="field"><span class="field-label">Chiều dòng điện hiển thị</span>
+      <select id="setFlow">
+        <option value="conv">Chiều quy ước (+ → −)</option>
+        <option value="electron">Chiều chuyển động electron (− → +)</option>
+      </select>
+    </label>
+    <label class="field field-check"><input type="checkbox" id="setArrows"><span class="field-label">Hiện mũi tên &amp; giá trị dòng cho mọi linh kiện</span></label>
     <label class="field field-check"><input type="checkbox" id="setAnsi"><span class="field-label">Ký hiệu điện trở kiểu ANSI (răng cưa)</span></label>
     <label class="field"><span class="field-label">Giao diện</span>
       <select id="setTheme"><option value="auto">Theo hệ thống</option><option value="dark">Tối</option><option value="light">Sáng</option></select>
@@ -141,7 +151,8 @@
       <h3>Đo và quan sát</h3>
       <ul>
         <li>Rê chuột lên dây để xem điện áp nút. Nhấp vào linh kiện để xem điện áp, dòng, công suất và <b>vùng làm việc</b> (với BJT/FET).</li>
-        <li>Màu dây: xanh lá = dương, đỏ = âm, xám = 0 V. Chấm vàng chuyển động theo chiều dòng điện quy ước.</li>
+        <li>Màu dây: xanh lá = dương, đỏ = âm, xám = 0 V. Chấm vàng chuyển động theo chiều dòng điện quy ước (+ → −); nút <b>“I Quy ước / e⁻ Electron”</b> trên thanh công cụ đổi sang chiều electron (chấm xanh, − → +).</li>
+        <li>Linh kiện đang chọn có <b>mũi tên ghi giá trị dòng</b> ở mỗi cực; nút <b>“→ I”</b> bật mũi tên cho toàn mạch.</li>
         <li>Dao động ký: đặt <b>Đầu dò</b> lên nút, hoặc chọn linh kiện rồi bấm “Đo điện áp / Đo dòng điện”. Chế độ <b>XY</b> dùng kênh 1 làm trục X để vẽ đặc tuyến.</li>
         <li>Thanh <b>Tốc độ</b>: số giây thời gian mạch trôi qua trong một giây thực.</li>
       </ul>

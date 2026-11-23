@@ -16,7 +16,8 @@
   --cv-fill: #ffffff;
   --cv-text: #1c2430;
   --cv-zero: #7d8794;
-  --cv-dot: #e0a100;
+  --cv-dot: #c98a00;
+  --cv-electron: #0a7fd0;
   --plot-bg: #ffffff;
   --plot-grid: #e7ebf0;
   --plot-axis: #a9b3bf;
@@ -46,6 +47,7 @@
     --cv-text: #e6edf3;
     --cv-zero: #8a919c;
     --cv-dot: #ffd60a;
+    --cv-electron: #5fd4ff;
     --plot-bg: #0d1117;
     --plot-grid: #1d2632;
     --plot-axis: #3a4756;
@@ -72,6 +74,7 @@
   --cv-text: #e6edf3;
   --cv-zero: #8a919c;
   --cv-dot: #ffd60a;
+  --cv-electron: #5fd4ff;
   --plot-bg: #0d1117;
   --plot-grid: #1d2632;
   --plot-axis: #3a4756;
@@ -214,6 +217,7 @@ body[data-view="curves"] .design-only { display: none; }
   box-shadow: var(--shadow);
 }
 .float-tools button { padding: 4px 9px; }
+.float-tools button.electron { color: var(--cv-electron); border-color: var(--cv-electron); }
 .float-tools button.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 #status {
   position: absolute;

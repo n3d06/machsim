@@ -13,7 +13,7 @@
     tool: 'select', placeType: null, placeRot: 0, placeFlip: false,
     sel: new Set(), selW: new Set(),
     hist: [], fut: [],
-    settings: { ansi: false, showValues: true, showDots: true, method: 'be', theme: 'auto', dotSpeed: 1 },
+    settings: { ansi: false, showValues: true, showDots: true, method: 'be', theme: 'auto', dotSpeed: 1, flow: 'conv', arrowsAll: false },
     debt: 0, vmax: 1, lastTs: 0,
     mouse: { sx: 0, sy: 0, wx: 0, wy: 0, in: false },
     drag: null, colors: {}, clip: null, lastUi: 0
@@ -38,7 +38,7 @@
     S.colors = {
       bg: c('--cv-bg', '#0d1117'), grid: c('--cv-grid', '#2a3340'), body: c('--cv-body', '#d8dee9'),
       fill: c('--cv-fill', '#161b22'), sel: c('--accent', '#4fc3f7'), text: c('--cv-text', '#c9d1d9'),
-      muted: c('--muted', '#8b949e'), zero: c('--cv-zero', '#8a919c'), dot: c('--cv-dot', '#ffd60a')
+      muted: c('--muted', '#8b949e'), zero: c('--cv-zero', '#8a919c'), dot: c('--cv-dot', '#ffd60a'), electron: c('--cv-electron', '#5fd4ff')
     };
   }
 
@@ -279,7 +279,7 @@
   function dotSpeed(i) {
     const a = Math.abs(i);
     if (a < 1e-6) return 0;
-    return Math.sign(i) * 0.7 * Math.log10(1 + a / 1e-6) * S.settings.dotSpeed;
+    return (S.settings.flow === 'electron' ? -1 : 1) * Math.sign(i) * 0.7 * Math.log10(1 + a / 1e-6) * S.settings.dotSpeed;
   }
   function drawDotsAlong(pts, phase) {
     let total = 0;
@@ -355,6 +355,69 @@
   }
   function setFont(bold) { g.font = (bold ? '700 0.66px' : '0.56px') + ' system-ui, sans-serif'; }
 
+  /* Mũi tên chiều dòng điện + giá trị */
+  function arrowLine(x1, y1, x2, y2, color) {
+    g.strokeStyle = color; g.fillStyle = color; g.lineWidth = 0.09;
+    g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+    const a = Math.atan2(y2 - y1, x2 - x1), s = 0.32;
+    g.beginPath();
+    g.moveTo(x2 + 0.05 * Math.cos(a), y2 + 0.05 * Math.sin(a));
+    g.lineTo(x2 - s * Math.cos(a - 0.5), y2 - s * Math.sin(a - 0.5));
+    g.lineTo(x2 - s * Math.cos(a + 0.5), y2 - s * Math.sin(a + 0.5));
+    g.closePath(); g.fill();
+  }
+  function arrowText(txt, x, y, align, color) {
+    g.font = '700 0.52px system-ui, sans-serif';
+    g.textAlign = align; g.textBaseline = 'middle';
+    const w = g.measureText(txt).width;
+    const x0 = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+    g.fillStyle = S.colors.bg; g.globalAlpha = 0.85;
+    g.fillRect(x0 - 0.1, y - 0.34, w + 0.2, 0.68);
+    g.globalAlpha = 1; g.fillStyle = color;
+    g.fillText(txt, x, y);
+  }
+  function drawCurrentArrows(c) {
+    const el = c._el, def = DEFS[c.type];
+    if (!el || !el.ic || c.type === 'GND' || c.type === 'PROBE' || c.type === 'VM') return;
+    const elec = S.settings.flow === 'electron';
+    const col = elec ? S.colors.electron : S.colors.dot;
+    const pre = elec ? 'e⁻ ' : 'I = ';
+    const t = MS.terminals(c);
+    if (def.terms.length === 2) {
+      const I = el.ic[0];
+      if (Math.abs(I) < 1e-9) return;
+      const [a, b] = t;
+      const L = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L;
+      const horiz = Math.abs(ux) > 0.5;
+      const mx = (a[0] + b[0]) / 2 + (horiz ? 0 : -1.45), my = (a[1] + b[1]) / 2 + (horiz ? 1.45 : 0);
+      const s = Math.sign(I) * (elec ? -1 : 1);
+      arrowLine(mx - ux * 0.85 * s, my - uy * 0.85 * s, mx + ux * 0.85 * s, my + uy * 0.85 * s, col);
+      const txt = pre + fmt(Math.abs(I), 'A');
+      if (horiz) arrowText(txt, mx, my + 0.65, 'center', col);
+      else arrowText(txt, mx - 0.45, my, 'right', col);
+      return;
+    }
+    const b = def.bbox;
+    const [cx, cy] = MS.xform(c, (b[0] + b[2]) / 2, (b[1] + b[3]) / 2);
+    t.forEach((T, i) => {
+      const I = el.ic[i];
+      if (Math.abs(I) < 1e-9) return;
+      const path = def.paths.find((q) => q[0] === i);
+      let N = path ? MS.xform(c, path[1][1][0], path[1][1][1]) : [cx, cy];
+      let dx = N[0] - T[0], dy = N[1] - T[1];
+      const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+      let px = -dy, py = dx;
+      if (px * (T[0] - cx) + py * (T[1] - cy) < 0) { px = -px; py = -py; }
+      const ox = T[0] + dx * 0.6 + px * 0.42, oy = T[1] + dy * 0.6 + py * 0.42;
+      const s = Math.sign(I) * (elec ? -1 : 1); // dương: đi vào cực
+      arrowLine(ox - dx * 0.4 * s, oy - dy * 0.4 * s, ox + dx * 0.4 * s, oy + dy * 0.4 * s, col);
+      const nm = def.termNames ? def.termNames[i] : '';
+      const txt = (elec ? 'e⁻ ' : 'I' + (nm ? '_' + nm : '') + ' = ') + fmt(Math.abs(I), 'A');
+      const tx = ox + px * 0.4, ty = oy + py * 0.4;
+      arrowText(txt, tx, ty, Math.abs(px) > 0.5 ? (px > 0 ? 'left' : 'right') : 'center', col);
+    });
+  }
+
   function render() {
     const dpr = window.devicePixelRatio || 1;
     const W = cv.width / dpr, H = cv.height / dpr;
@@ -401,7 +464,7 @@
     }
     // chấm dòng điện
     if (net && S.settings.showDots && S.eng) {
-      g.fillStyle = S.colors.dot;
+      g.fillStyle = S.settings.flow === 'electron' ? S.colors.electron : S.colors.dot;
       g.beginPath();
       for (const e of net.edges) {
         if (Math.abs(e.cur) < 1e-6) continue;
@@ -421,6 +484,7 @@
     }
     // nhãn
     for (const c of S.circ.comps) compLabel(c);
+    if (S.eng) for (const c of S.circ.comps) if (S.settings.arrowsAll || S.sel.has(c)) drawCurrentArrows(c);
 
     // đối tượng tạm
     const d = S.drag;
@@ -894,7 +958,8 @@
         <li><b>Sửa thông số:</b> nhấp vào linh kiện; bảng này sẽ hiện tham số, số đo trực tiếp và lý thuyết.</li>
         <li><b>Công tắc:</b> nhấp để bật/tắt khi đang chạy.</li>
         <li><b>Đo:</b> rê chuột lên dây để xem điện áp; dùng Đầu dò / nút “Đo” để xem dạng sóng.</li>
-        <li>Màu dây: <span style="color:#28d25f">xanh = dương</span>, <span style="color:#ff4848">đỏ = âm</span>, xám = 0 V. Chấm vàng chạy theo chiều dòng điện quy ước.</li>
+        <li>Màu dây: <span style="color:#28d25f">xanh = dương</span>, <span style="color:#ff4848">đỏ = âm</span>, xám = 0 V.</li>
+        <li><b>Chiều dòng:</b> chấm vàng chạy theo chiều dòng <b>quy ước</b> (+ → −); bấm nút <b>“I Quy ước”</b> để đổi sang chiều <b>electron</b> (chấm xanh, − → +). Linh kiện đang chọn có mũi tên ghi giá trị dòng; nút <b>“→ I”</b> hiện mũi tên cho mọi linh kiện.</li>
       </ul></div>`;
     box.appendChild(d);
   }
@@ -943,12 +1008,21 @@
     b.innerHTML = S.running ? '⏸ Tạm dừng' : '▶ Chạy';
     b.classList.toggle('paused', !S.running);
   }
+  function syncFlowBtn() {
+    const e = S.settings.flow === 'electron';
+    const b = $('#toolFlow');
+    b.textContent = e ? 'e⁻ Electron' : 'I Quy ước';
+    b.classList.toggle('electron', e);
+    b.title = e ? 'Đang hiện chiều electron (− → +). Nhấp để đổi sang chiều quy ước' : 'Đang hiện chiều dòng quy ước (+ → −). Nhấp để đổi sang chiều electron';
+    $('#toolArrows').classList.toggle('active', S.settings.arrowsAll);
+  }
   function syncSimUI() {
     $('#speed').value = Math.log10(S.circ.sim.speed);
     $('#speedLbl').textContent = fmt(S.circ.sim.speed, 's') + '/s';
     $('#scopeWin').value = fmt(scope.window, 's').replace(' ', '');
     $('#scopeXY').checked = scope.xy;
     syncRunBtn();
+    syncFlowBtn();
   }
 
   /* ===================== Tệp / chia sẻ ===================== */
@@ -1082,6 +1156,8 @@
     $('#toolRotate').onclick = () => rotateSel(1);
     $('#toolDelete').onclick = deleteSel;
     $('#toolFit').onclick = fitView;
+    $('#toolFlow').onclick = () => { S.settings.flow = S.settings.flow === 'electron' ? 'conv' : 'electron'; saveSettings(); syncFlowBtn(); toast(S.settings.flow === 'electron' ? 'Hiển thị chiều chuyển động electron (từ − sang +)' : 'Hiển thị chiều dòng điện quy ước (từ + sang −)'); };
+    $('#toolArrows').onclick = () => { S.settings.arrowsAll = !S.settings.arrowsAll; saveSettings(); syncFlowBtn(); };
     $('#toolZoomIn').onclick = () => zoomAt(cv.clientWidth / 2, cv.clientHeight / 2, 1.25);
     $('#toolZoomOut').onclick = () => zoomAt(cv.clientWidth / 2, cv.clientHeight / 2, 0.8);
 
@@ -1117,6 +1193,8 @@
       $('#setDots').checked = S.settings.showDots;
       $('#setAnsi').checked = S.settings.ansi;
       $('#setTheme').value = S.settings.theme;
+      $('#setFlow').value = S.settings.flow;
+      $('#setArrows').checked = S.settings.arrowsAll;
       dlgS.showModal();
     };
     $('#setApply').onclick = (e) => {
@@ -1129,6 +1207,9 @@
       S.settings.showDots = $('#setDots').checked;
       S.settings.ansi = $('#setAnsi').checked;
       S.settings.theme = $('#setTheme').value;
+      S.settings.flow = $('#setFlow').value;
+      S.settings.arrowsAll = $('#setArrows').checked;
+      syncFlowBtn();
       saveSettings(); saveLocal(); applyTheme();
       rebuild();
       dlgS.close();
