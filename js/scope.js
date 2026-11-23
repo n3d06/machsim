@@ -100,7 +100,7 @@
       g.textBaseline = 'bottom';
       if (!this.signals.length) {
         g.textAlign = 'center';
-        g.fillText('Chưa có kênh nào. Chọn một linh kiện rồi bấm “Đo điện áp / Đo dòng điện”, hoặc đặt Đầu dò lên mạch.', W / 2, H / 2);
+        g.fillText(this.emptyText || 'Chưa có kênh nào. Chọn một linh kiện rồi bấm “Đo điện áp / Đo dòng điện”, hoặc đặt Đầu dò lên mạch.', W / 2, H / 2);
         return;
       }
 

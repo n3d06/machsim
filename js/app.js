@@ -800,7 +800,7 @@
 
   /* ===================== Bàn phím ===================== */
   document.addEventListener('keydown', (e) => {
-    if (e.target.closest('input, select, textarea, dialog') || $('#curvesView').hidden === false) return;
+    if (e.target.closest('input, select, textarea, dialog') || document.body.dataset.view !== 'design') return;
     const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
     if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
     else if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
@@ -1182,7 +1182,17 @@
       $('#designView').hidden = v !== 'design';
       $('#scopePanel').hidden = v !== 'design';
       $('#curvesView').hidden = v !== 'curves';
+      $('#bbView').hidden = v !== 'bb';
+      $('#bbScopePanel').hidden = v !== 'bb';
       document.body.dataset.view = v;
+      if (v === 'bb') {
+        if (!S.bb) S.bb = MS.initBreadboard({
+          canvas: $('#bbCv'), scopeCanvas: $('#bbScopeCv'), palette: $('#bbPalette'), props: $('#bbProps'), chips: $('#bbChips'),
+          status: $('#bbStatus'), run: $('#bbRun'), reset: $('#bbReset'), speed: $('#bbSpeed'), speedLbl: $('#bbSpeedLbl'), time: $('#bbTime'),
+          fit: $('#bbFit'), del: $('#bbDel'), rot: $('#bbRot'), undo: $('#bbUndo'), clear: $('#bbClear'), exBtn: $('#bbExBtn'), exMenu: $('#bbExMenu')
+        });
+        setTimeout(() => S.bb.show(), 0);
+      } else if (S.bb) S.bb.hide();
       if (v === 'curves') { if (!S.curves) S.curves = MS.initCurves($('#cvSide'), $('#cvPlot'), $('#cvInfo')); else S.curves.redraw(); }
       else setTimeout(resize, 0);
     }));

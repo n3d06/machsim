@@ -19,6 +19,8 @@
 | Op-amp & Logic | Op-amp (LM741, TL081, LM358 – có bão hòa và GBW), cổng NOT/AND/OR/NAND/NOR/XOR, đầu vào logic 0/1, đèn báo logic |
 | Đo lường | Đầu dò dao động ký, vôn kế, ampe kế |
 
+**Breadboard (bo cắm thử)** – lắp mạch như ngoài phòng thí nghiệm: bo 63 cột với hàng a–j, rãnh giữa và 4 ray nguồn; linh kiện vẽ như thật (điện trở có vạch màu, LED phát sáng, transistor TO-92, IC DIP LM741 / 74HC00–86), dây nhảy, nút nhấn (nhấn giữ), công tắc gạt, pin, máy phát sóng, đồng hồ vạn năng, que dao động ký. Nguồn phòng thí nghiệm 2 kênh cấp vào các ray (CH2 có thể âm cho op-amp). Rê chuột lên một lỗ để thấy các lỗ thông nhau; chân chưa nối được đánh dấu đỏ. IC chỉ hoạt động khi được cấp nguồn đúng chân. 4 bài mẫu: LED + nút nhấn, transistor làm khóa, LM741 khuếch đại đảo, 74HC08.
+
 **Đặc tuyến linh kiện** – vẽ trực tiếp từ mô hình: đặc tuyến V–A diode (tuyến tính/log), họ đặc tuyến ra và đặc tuyến vào BJT, đặc tuyến ra và truyền đạt MOSFET/JFET, **đường tải tĩnh và điểm Q**.
 
 **26 mạch ví dụ**: diode phân cực, LED, chỉnh lưu nửa chu kỳ, chỉnh lưu cầu + tụ lọc, ổn áp Zener, mạch xén, mạch ghim, nhân đôi điện áp, vẽ đặc tuyến Zener bằng XY, vùng làm việc BJT, BJT làm khóa, khuếch đại E chung, gương dòng, dao động đa hài, MOSFET làm khóa, cổng đảo CMOS (VTC), khuếch đại JFET, SCR mạch chốt; op-amp: khuếch đại đảo/không đảo, Schmitt trigger (vòng trễ XY), tích phân, dao động xung vuông; logic: các cổng cơ bản, bộ cộng bán phần, mạch chốt SR.
@@ -59,6 +61,7 @@ js/examples.js      các mạch ví dụ
 js/scope.js         dao động ký
 js/plot.js          vẽ đồ thị
 js/curves.js        trang đặc tuyến linh kiện
+js/breadboard.js    mô phỏng breadboard (bo, linh kiện thật, IC DIP)
 js/app.js           trình soạn thảo sơ đồ, điều khiển mô phỏng
 tools/test.js       kiểm tra tự động lõi mô phỏng và các mạch ví dụ
 ```

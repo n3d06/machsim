@@ -18,6 +18,7 @@
   </div>
   <nav class="tabs" aria-label="Chế độ">
     <button data-view="design" class="active">Thiết kế mạch</button>
+    <button data-view="bb">Breadboard</button>
     <button data-view="curves">Đặc tuyến linh kiện</button>
   </nav>
   <div class="tb-group design-only">
@@ -82,6 +83,36 @@
     <button id="scopeToggle" class="mini-btn" title="Thu gọn / mở rộng">▾</button>
   </div>
   <canvas id="scopeCv"></canvas>
+</section>
+
+<main id="bbView" class="view" hidden>
+  <aside id="bbPalette" class="palette" aria-label="Linh kiện breadboard"></aside>
+  <section id="bbStage" class="stage">
+    <canvas id="bbCv"></canvas>
+    <div class="float-tools">
+      <div class="dropdown">
+        <button id="bbExBtn">Ví dụ ▾</button>
+        <div class="menu" id="bbExMenu"></div>
+      </div>
+      <button id="bbUndo" title="Hoàn tác (Ctrl+Z)">↶</button>
+      <button id="bbRot" title="Đảo chiều (R)">⇄</button>
+      <button id="bbDel" title="Xóa (Delete)">🗑</button>
+      <button id="bbClear" title="Gỡ hết linh kiện">Gỡ hết</button>
+      <span class="sep"></span>
+      <button id="bbRun" class="run">⏸ Tạm dừng</button>
+      <button id="bbReset" title="Chạy lại từ t = 0">⟲</button>
+      <label class="speed" title="Tốc độ mô phỏng"><input type="range" id="bbSpeed" min="-6" max="1" step="0.05"><span id="bbSpeedLbl" class="mono"></span></label>
+      <span id="bbTime" class="mono">t = 0</span>
+      <button id="bbFit" title="Vừa khung (Home)">⤢</button>
+    </div>
+    <div id="bbStatus" class="status"></div>
+  </section>
+  <aside id="bbProps" class="props" aria-label="Thuộc tính"></aside>
+</main>
+
+<section id="bbScopePanel" class="scope-panel" hidden>
+  <div class="scope-head"><b>Dao động ký</b><div id="bbChips" class="chips"></div></div>
+  <canvas id="bbScopeCv"></canvas>
 </section>
 
 <main id="curvesView" class="view" hidden>
@@ -175,6 +206,7 @@
 <script src="js/plot.js"></script>
 <script src="js/scope.js"></script>
 <script src="js/curves.js"></script>
+<script src="js/breadboard.js"></script>
 <script src="js/app.js"></script>
 <script>
   // Chỉ bật cache offline ở bản đã deploy (workflow chèn thẻ machsim-version)

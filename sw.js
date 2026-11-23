@@ -10,7 +10,7 @@ const ASSETS = [
   './manifest.webmanifest',
   './icon.svg',
   './css/style.css' + V,
-  ...['util', 'engine', 'components', 'netlist', 'examples', 'plot', 'scope', 'curves', 'app'].map((f) => `./js/${f}.js${V}`)
+  ...['util', 'engine', 'components', 'netlist', 'examples', 'plot', 'scope', 'curves', 'breadboard', 'app'].map((f) => `./js/${f}.js${V}`)
 ];
 
 self.addEventListener('install', (e) => {
