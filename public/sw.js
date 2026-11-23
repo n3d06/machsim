@@ -3,18 +3,10 @@
  * bản cũ tự bị xoá khi bản mới kích hoạt. */
 const VERSION = '__VERSION__';
 const CACHE = 'machsim-' + VERSION;
-const V = '?v=' + VERSION;
-const ASSETS = [
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './icon.svg',
-  './css/style.css' + V,
-  ...['util', 'engine', 'components', 'netlist', 'examples', 'plot', 'scope', 'curves', 'breadboard', 'app'].map((f) => `./js/${f}.js${V}`)
-];
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -37,11 +29,11 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
-  // CSS/JS/ảnh (đường dẫn có ?v=commit): lấy từ cache trước, không có mới tải mạng
-  e.respondWith(
-    caches.match(req).then((hit) => hit || fetch(req).then((res) => {
-      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
-      return res;
-    }))
-  );
+  // assets/*: tên có mã băm nội dung nên cache-first; còn lại mạng trước, mất mạng dùng bản lưu
+  const hashed = new URL(req.url).pathname.includes('/assets/');
+  const net = () => fetch(req).then((res) => {
+    if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
+    return res;
+  });
+  e.respondWith(hashed ? caches.match(req).then((hit) => hit || net()) : net().catch(() => caches.match(req)));
 });

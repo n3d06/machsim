@@ -558,7 +558,11 @@
     const before = comps.map((c) => MS.terminals(c));
     mutate();
     const map = new Map();
-    comps.forEach((c, i) => { const after = MS.terminals(c); before[i].forEach((p, j) => map.set(p[0] + ',' + p[1], after[j])); });
+    comps.forEach((c, i) => {
+      const after = MS.terminals(c), key = (ps) => ps.map((p) => p.join(',')).sort().join(';');
+      if (key(before[i]) === key(after)) return; // cực vẫn nằm đúng chỗ cũ (vd. xoay 180°): dây giữ nguyên
+      before[i].forEach((p, j) => map.set(p[0] + ',' + p[1], after[j]));
+    });
     for (const w of S.circ.wires) {
       if (S.selW.has(w)) continue;
       const a = map.get(w.x1 + ',' + w.y1), b = map.get(w.x2 + ',' + w.y2);
@@ -568,12 +572,20 @@
     S.circ.wires = S.circ.wires.filter((w) => w.x1 !== w.x2 || w.y1 !== w.y2);
   }
 
+  // Xoay n bước 90° quanh tâm các cực (không phải cực 0): linh kiện 2 cực xoay 180° đứng yên tại chỗ, chỉ đảo cực
+  function turn(c, n) {
+    const centre = () => { const t = MS.terminals(c), xs = t.map((q) => q[0]), ys = t.map((q) => q[1]); return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2]; };
+    const a = centre();
+    c.rot = (c.rot + n + 4) & 3;
+    const b = centre();
+    c.x += Math.round(a[0] - b[0]); c.y += Math.round(a[1] - b[1]);
+  }
   function rotateSel(dir) {
     if (S.tool === 'place') { S.placeRot = (S.placeRot + (dir || 1) + 4) & 3; return; }
     const comps = [...S.sel];
     if (!comps.length) return;
     pushHist();
-    transformComps(comps, () => comps.forEach((c) => (c.rot = (c.rot + (dir || 1) + 4) & 3)));
+    transformComps(comps, () => comps.forEach((c) => turn(c, dir || 1)));
     commit();
   }
   function flipSel() {
@@ -581,7 +593,8 @@
     const comps = [...S.sel];
     if (!comps.length) return;
     pushHist();
-    transformComps(comps, () => comps.forEach((c) => (c.flip = !c.flip)));
+    // Linh kiện 2 cực: lật không đổi vị trí cực nên "lật" = đảo cực (xoay 180° tại chỗ)
+    transformComps(comps, () => comps.forEach((c) => (DEFS[c.type].terms.length === 2 ? turn(c, 2) : (c.flip = !c.flip))));
     commit();
   }
   function deleteSel() {
@@ -858,6 +871,7 @@
   function drawPaletteIcons() {
     document.querySelectorAll('.pal-item').forEach((b) => {
       const type = b.dataset.type, def = DEFS[type];
+      if (!def) return; // mục của palette breadboard (có bộ vẽ riêng)
       const ic = b.querySelector('canvas'), x = ic.getContext('2d');
       x.setTransform(1, 0, 0, 1, 0, 0);
       x.clearRect(0, 0, ic.width, ic.height);
@@ -908,12 +922,12 @@
       acts.className = 'props-actions';
       const btn = (label, fn, cls) => { const b = document.createElement('button'); b.innerHTML = label; b.className = cls || ''; b.addEventListener('click', fn); acts.appendChild(b); };
       if (c.type !== 'GND') {
-        btn('📈 Đo điện áp', () => addSignal(c.id, 'v'));
-        if (c.type !== 'PROBE' && c.type !== 'VM' && c.type !== 'LOGICOUT') btn('📈 Đo dòng điện', () => addSignal(c.id, 'i'));
+        btn(`${MS.icon('ChartLine')} Đo điện áp`, () => addSignal(c.id, 'v'));
+        if (c.type !== 'PROBE' && c.type !== 'VM' && c.type !== 'LOGICOUT') btn(`${MS.icon('ChartLine')} Đo dòng điện`, () => addSignal(c.id, 'i'));
       }
-      btn('⟳ Xoay (R)', () => rotateSel(1));
-      btn('⇅ Lật (F)', () => flipSel());
-      btn('🗑 Xóa', () => deleteSel(), 'danger');
+      btn(`${MS.icon('RotateCw')} Xoay (R)`, () => rotateSel(1));
+      btn(`${MS.icon('FlipVertical2')} Lật (F)`, () => flipSel());
+      btn(`${MS.icon('Trash2')} Xóa`, () => deleteSel(), 'danger');
       box.appendChild(acts);
       const live = document.createElement('div');
       live.className = 'props-live';
@@ -946,8 +960,8 @@
       d.innerHTML = `<div class="props-type">Đã chọn ${comps.length} linh kiện, ${wires.length} đoạn dây</div>${node}`;
       const acts = document.createElement('div');
       acts.className = 'props-actions';
-      const b = document.createElement('button'); b.className = 'danger'; b.textContent = '🗑 Xóa (Delete)'; b.onclick = deleteSel; acts.appendChild(b);
-      if (comps.length) { const r = document.createElement('button'); r.textContent = '⟳ Xoay (R)'; r.onclick = () => rotateSel(1); acts.appendChild(r); }
+      const b = document.createElement('button'); b.className = 'danger'; b.innerHTML = `${MS.icon('Trash2')} Xóa (Delete)`; b.onclick = deleteSel; acts.appendChild(b);
+      if (comps.length) { const r = document.createElement('button'); r.innerHTML = `${MS.icon('RotateCw')} Xoay (R)`; r.onclick = () => rotateSel(1); acts.appendChild(r); }
       box.appendChild(d); box.appendChild(acts);
       return;
     }
@@ -1009,7 +1023,7 @@
   }
   function syncRunBtn() {
     const b = $('#btnRun');
-    b.innerHTML = S.running ? '⏸ Tạm dừng' : '▶ Chạy';
+    b.innerHTML = S.running ? `${MS.icon('Pause')} Tạm dừng` : `${MS.icon('Play')} Chạy`;
     b.classList.toggle('paused', !S.running);
   }
   function syncFlowBtn() {
@@ -1181,7 +1195,6 @@
       const v = b.dataset.view;
       $('#designView').hidden = v !== 'design';
       $('#scopePanel').hidden = v !== 'design';
-      $('#curvesView').hidden = v !== 'curves';
       $('#bbView').hidden = v !== 'bb';
       $('#bbScopePanel').hidden = v !== 'bb';
       document.body.dataset.view = v;
@@ -1193,8 +1206,7 @@
         });
         setTimeout(() => S.bb.show(), 0);
       } else if (S.bb) S.bb.hide();
-      if (v === 'curves') { if (!S.curves) S.curves = MS.initCurves($('#cvSide'), $('#cvPlot'), $('#cvInfo')); else S.curves.redraw(); }
-      else setTimeout(resize, 0);
+      setTimeout(resize, 0);
     }));
 
     // cài đặt

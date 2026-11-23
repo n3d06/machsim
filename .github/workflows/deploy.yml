@@ -35,24 +35,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Cache theo phiên bản: CSS/JS mang ?v=<mã commit> nên được lưu lâu trong cache
-      # (Service Worker lấy từ cache trước, chạy được offline); khi có commit mới,
-      # đường dẫn đổi nên trình duyệt tự lấy bản mới và xoá bộ cache cũ.
-      - name: Build (cache theo phiên bản)
+      # Vite băm tên file trong dist/assets nên cache được vô thời hạn; sw.js chỉ cần mã phiên bản
+      # để mỗi bản deploy có một bộ cache riêng (bản cũ bị xoá khi bản mới kích hoạt).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build
         run: |
           VERSION="${GITHUB_SHA::8}"
-          mkdir -p _site
-          cp -r index.html sw.js manifest.webmanifest icon.svg css js _site/
-          sed -i "s/__VERSION__/${VERSION}/" _site/sw.js
-          sed -i -E "s#(href|src)=\"((css|js)/[^\"?]+)\"#\1=\"\2?v=${VERSION}\"#g" _site/index.html
-          sed -i "s#</head>#<meta name=\"machsim-version\" content=\"${VERSION}\">\n</head>#" _site/index.html
-          touch _site/.nojekyll
-          grep -nE "\?v=|machsim-version" _site/index.html
-          grep -n "const VERSION" _site/sw.js
+          npm run build
+          sed -i "s/__VERSION__/${VERSION}/" dist/sw.js
+          sed -i "s#</head>#<meta name=\"machsim-version\" content=\"${VERSION}\"></head>#" dist/index.html
+          touch dist/.nojekyll
+          grep -n "machsim-version" dist/index.html
+          grep -n "const VERSION" dist/sw.js
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: dist
       - id: deployment
         uses: actions/deploy-pages@v4

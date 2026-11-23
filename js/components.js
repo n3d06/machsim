@@ -280,19 +280,7 @@
     currents(el, x) { const i = (X(x, el.u[0]) - X(x, el.u[1])) / el.P.R; return [i, -i]; },
     info: (el, eng) => info2(el, eng),
     draw(g, el, o) {
-      if (o.ansi) {
-        leads2(g, o, 1, 3);
-        const pts = [1, 0];
-        for (let i = 0; i < 6; i++) pts.push(1 + (i + 0.5) / 3, i % 2 ? 0.4 : -0.4);
-        pts.push(3, 0);
-        line(g, pts, o.body);
-      } else {
-        leads2(g, o, 1, 3);
-        g.fillStyle = o.fillBody;
-        g.fillRect(1, -0.4, 2, 0.8);
-        g.strokeStyle = o.body; g.lineWidth = 0.1;
-        g.strokeRect(1, -0.4, 2, 0.8);
-      }
+      MS.drawSym(g, o, o.ansi ? 'R_ANSI' : 'R_IEC');
     },
     theory: 'Định luật Ohm: <b>U = I·R</b>. Công suất tiêu tán <b>P = I²R = U²/R</b>.'
   });
@@ -328,9 +316,7 @@
       return r;
     },
     draw(g, el, o) {
-      leads2(g, o, 1.8, 2.2);
-      line(g, [1.8, -0.8, 1.8, 0.8], o.body, 0.14);
-      line(g, [2.2, -0.8, 2.2, 0.8], o.body, 0.14);
+      MS.drawSym(g, o, 'C');
     },
     theory: 'Quan hệ <b>i = C·du/dt</b>. Tụ chặn dòng một chiều (DC) và cho tín hiệu xoay chiều đi qua. Trở kháng <b>Z<sub>C</sub> = 1/(2πfC)</b>.'
   });
@@ -358,13 +344,7 @@
     currents(el, x) { const i = x[el.br[0]]; return [i, -i]; },
     info: (el, eng) => info2(el, eng),
     draw(g, el, o) {
-      leads2(g, o, 1, 3);
-      g.strokeStyle = o.body; g.lineWidth = 0.1;
-      for (let i = 0; i < 4; i++) {
-        g.beginPath();
-        g.arc(1.25 + i * 0.5, 0, 0.25, Math.PI, 0);
-        g.stroke();
-      }
+      MS.drawSym(g, o, 'L');
     },
     theory: 'Quan hệ <b>u = L·di/dt</b>. Cuộn cảm ngắn mạch với DC, cản trở dòng biến thiên. Trở kháng <b>Z<sub>L</sub> = 2πfL</b>.'
   });
@@ -578,7 +558,7 @@
     params: diodeParamDefs(D_PRESETS, '1N4148'),
     compile: (p) => diodeParams(MS.parseSI(p.Is) || 1e-14, MS.parseSI(p.n) || 1, MS.parseSI(p.BV) || 0),
     value: (p) => (p.model !== 'custom' ? p.model : 'Diode'),
-    draw(g, el, o) { diodeBody(g, o); line(g, [2.6, -0.6, 2.6, 0.6], o.body, 0.12); },
+    draw(g, el, o) { MS.drawSym(g, o, 'D'); },
     theory: 'Diode bán dẫn (tiếp giáp p–n). Phương trình Shockley: <b>I<sub>D</sub> = I<sub>S</sub>(e<sup>V<sub>D</sub>/(nV<sub>T</sub>)</sup> − 1)</b>, V<sub>T</sub> ≈ 25,85 mV ở 300 K. Diode Si dẫn rõ rệt khi V<sub>D</sub> ≈ 0,6–0,7 V; phân cực ngược chỉ có dòng rò rất nhỏ cho tới khi bị đánh thủng.'
   }));
 

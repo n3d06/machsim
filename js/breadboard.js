@@ -982,8 +982,8 @@
       box.appendChild(pinInfo);
       const acts = document.createElement('div'); acts.className = 'props-actions';
       const btn = (l, f, c) => { const b = document.createElement('button'); b.innerHTML = l; b.className = c || ''; b.onclick = f; acts.appendChild(b); };
-      if (t.place === 'two' || t.place === 'three') btn('⇄ Đảo chiều (R)', rotateSel);
-      btn('🗑 Xóa', deleteSel, 'danger');
+      if (t.place === 'two' || t.place === 'three') btn(`${MS.icon('ArrowLeftRight')} Đảo chiều (R)`, rotateSel);
+      btn(`${MS.icon('Trash2')} Xóa`, deleteSel, 'danger');
       box.appendChild(acts);
       const live = document.createElement('div'); live.className = 'props-live'; live.id = 'bbLive';
       box.appendChild(live);
@@ -1029,7 +1029,7 @@
       scope.signals.forEach((s, i) => { if (ch[i]) ch[i].querySelector('.chip-val').textContent = `${fmt(scope.current(s), 'V')} · ${fmt(s.perDiv, 'V')}/div`; });
     }
     function syncTools() {
-      el.run.innerHTML = S.running ? '⏸ Tạm dừng' : '▶ Chạy';
+      el.run.innerHTML = S.running ? `${MS.icon('Pause')} Tạm dừng` : `${MS.icon('Play')} Chạy`;
       el.run.classList.toggle('paused', !S.running);
       el.speed.value = Math.log10(S.speed);
       el.speedLbl.textContent = fmt(S.speed, 's') + '/s';

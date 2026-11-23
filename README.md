@@ -21,25 +21,24 @@
 
 **Breadboard (bo cắm thử)** – lắp mạch như ngoài phòng thí nghiệm: bo 63 cột với hàng a–j, rãnh giữa và 4 ray nguồn; linh kiện vẽ như thật (điện trở có vạch màu, LED phát sáng, transistor TO-92, IC DIP LM741 / 74HC00–86), dây nhảy, nút nhấn (nhấn giữ), công tắc gạt, pin, máy phát sóng, đồng hồ vạn năng, que dao động ký. Nguồn phòng thí nghiệm 2 kênh cấp vào các ray (CH2 có thể âm cho op-amp). Rê chuột lên một lỗ để thấy các lỗ thông nhau; chân chưa nối được đánh dấu đỏ. IC chỉ hoạt động khi được cấp nguồn đúng chân. 4 bài mẫu: LED + nút nhấn, transistor làm khóa, LM741 khuếch đại đảo, 74HC08.
 
-**Đặc tuyến linh kiện** – vẽ trực tiếp từ mô hình: đặc tuyến V–A diode (tuyến tính/log), họ đặc tuyến ra và đặc tuyến vào BJT, đặc tuyến ra và truyền đạt MOSFET/JFET, **đường tải tĩnh và điểm Q**.
-
 **26 mạch ví dụ**: diode phân cực, LED, chỉnh lưu nửa chu kỳ, chỉnh lưu cầu + tụ lọc, ổn áp Zener, mạch xén, mạch ghim, nhân đôi điện áp, vẽ đặc tuyến Zener bằng XY, vùng làm việc BJT, BJT làm khóa, khuếch đại E chung, gương dòng, dao động đa hài, MOSFET làm khóa, cổng đảo CMOS (VTC), khuếch đại JFET, SCR mạch chốt; op-amp: khuếch đại đảo/không đảo, Schmitt trigger (vòng trễ XY), tích phân, dao động xung vuông; logic: các cổng cơ bản, bộ cộng bán phần, mạch chốt SR.
 
 ## Chạy thử
 
-Mở trực tiếp `index.html` trong trình duyệt, hoặc chạy máy chủ tĩnh:
+Giao diện dùng React + Vite (lõi mô phỏng/canvas vẫn là JS thuần trong `js/`):
 
 ```bash
-python3 -m http.server 8000
-# mở http://localhost:8000
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # xuất ra dist/
 ```
 
 **Đưa lên mạng (GitHub Pages):** repo đã có workflow `.github/workflows/deploy.yml`. Vào *Settings → Pages → Source* chọn **GitHub Actions**. Mỗi lần push lên `main`, workflow sẽ:
 1. chạy `node tools/test.js` (lỗi thì không deploy);
-2. gắn `?v=<mã commit>` vào mọi tệp CSS/JS và đặt phiên bản cho Service Worker;
+2. chạy `npm run build` (Vite băm tên tệp) và đặt phiên bản cho Service Worker;
 3. deploy lên `https://<tên-tài-khoản>.github.io/machsim/`.
 
-**Cache:** bản deploy dùng Service Worker (`sw.js`) lưu toàn bộ ứng dụng vào bộ nhớ đệm của trình duyệt — lần sau mở tức thì, **chạy được cả khi mất mạng**, và có thể cài như ứng dụng (PWA). CSS/JS lấy từ cache trước; trang HTML ưu tiên mạng nên khi có bản deploy mới, trình duyệt nhận đường dẫn `?v=` mới, tải bản mới và tự xoá cache cũ. Khi chạy thử ở máy (không qua workflow) Service Worker không bật, để luôn thấy code mới nhất.
+**Cache:** bản deploy dùng Service Worker (`sw.js`) lưu toàn bộ ứng dụng vào bộ nhớ đệm của trình duyệt — lần sau mở tức thì, **chạy được cả khi mất mạng**, và có thể cài như ứng dụng (PWA). Tệp trong `assets/` (tên có mã băm) lấy từ cache trước; trang HTML ưu tiên mạng nên khi có bản deploy mới, trình duyệt nhận tên tệp mới, tải bản mới và tự xoá cache cũ. Khi chạy thử ở máy (không qua workflow) Service Worker không bật, để luôn thấy code mới nhất.
 
 ## Mô hình & lõi giải
 
@@ -60,7 +59,6 @@ js/netlist.js       chuyển sơ đồ thành netlist, tính dòng trên dây
 js/examples.js      các mạch ví dụ
 js/scope.js         dao động ký
 js/plot.js          vẽ đồ thị
-js/curves.js        trang đặc tuyến linh kiện
 js/breadboard.js    mô phỏng breadboard (bo, linh kiện thật, IC DIP)
 js/app.js           trình soạn thảo sơ đồ, điều khiển mô phỏng
 tools/test.js       kiểm tra tự động lõi mô phỏng và các mạch ví dụ
