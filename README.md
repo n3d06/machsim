@@ -1,0 +1,72 @@
+# MachSim – Giả lập mạch điện tử cho sinh viên Điện – Điện tử
+
+Ứng dụng web vẽ và mô phỏng mạch điện tử **chạy hoàn toàn trên trình duyệt** (không cần cài đặt, không cần máy chủ). Giai đoạn 1 tập trung vào **linh kiện bán dẫn**.
+
+## Tính năng
+
+**Thiết kế & mô phỏng mạch**
+- Vẽ sơ đồ trên lưới: kéo thả linh kiện, nối dây (tự bẻ góc), xoay/lật, chọn vùng, sao chép/dán, hoàn tác/làm lại.
+- Mô phỏng quá độ theo thời gian thực: màu dây theo điện áp, chấm vàng chạy theo chiều dòng điện, LED sáng theo dòng.
+- Bảng thuộc tính hiển thị số đo trực tiếp (U, I, P) và **vùng làm việc** của BJT/FET (tắt / khuếch đại / bão hòa / triode…), kèm phần lý thuyết ngắn cho từng linh kiện.
+- Dao động ký nhiều kênh (thang V/div tự động, chế độ **XY** để vẽ đặc tuyến), vôn kế, ampe kế, đầu dò.
+- Lưu/mở tệp `.json`, tự lưu vào trình duyệt, chia sẻ mạch qua liên kết.
+
+**Linh kiện**
+| Nhóm | Linh kiện |
+|---|---|
+| Cơ bản | GND, điện trở, tụ, cuộn cảm, nguồn áp DC, máy phát sóng (sin/vuông/tam giác/răng cưa), nguồn dòng, công tắc, biến trở |
+| Bán dẫn | Diode chỉnh lưu (1N4148, 1N4007), Schottky, Zener, LED (5 màu), BJT NPN/PNP (2N2222, 2N3904, BC547, 2N3906…), MOSFET kênh N/P (2N7000, IRF540, BS250…), JFET kênh N/P, Thyristor (SCR) |
+| Đo lường | Đầu dò dao động ký, vôn kế, ampe kế |
+
+**Đặc tuyến linh kiện** – vẽ trực tiếp từ mô hình: đặc tuyến V–A diode (tuyến tính/log), họ đặc tuyến ra và đặc tuyến vào BJT, đặc tuyến ra và truyền đạt MOSFET/JFET, **đường tải tĩnh và điểm Q**.
+
+**18 mạch ví dụ**: diode phân cực, LED, chỉnh lưu nửa chu kỳ, chỉnh lưu cầu + tụ lọc, ổn áp Zener, mạch xén, mạch ghim, nhân đôi điện áp, vẽ đặc tuyến Zener bằng XY, vùng làm việc BJT, BJT làm khóa, khuếch đại E chung, gương dòng, dao động đa hài, MOSFET làm khóa, cổng đảo CMOS (VTC), khuếch đại JFET, SCR mạch chốt.
+
+## Chạy thử
+
+Mở trực tiếp `index.html` trong trình duyệt, hoặc chạy máy chủ tĩnh:
+
+```bash
+python3 -m http.server 8000
+# mở http://localhost:8000
+```
+
+**Đưa lên mạng (GitHub Pages):** Settings → Pages → Source: *Deploy from a branch* → chọn nhánh `main`, thư mục `/ (root)`.
+
+## Mô hình & lõi giải
+
+- Phân tích nút cải tiến (MNA), giải hệ phi tuyến bằng Newton–Raphson có giới hạn bước tiếp giáp (pnjlim) và giới hạn V_GS.
+- Tích phân thời gian: Euler lùi (mặc định, ổn định) hoặc hình thang; tự chia nhỏ bước khi không hội tụ.
+- Diode: phương trình Shockley + đánh thủng ngược. BJT: Ebers–Moll + hiệu ứng Early. MOSFET/JFET: Shichman–Hodges (level 1). SCR: mô hình hai transistor PNP–NPN. BJT/FET có điện dung tiếp giáp nhỏ để mô phỏng chuyển mạch.
+- Các mô hình đã được đơn giản hoá cho mục đích học tập.
+
+## Cấu trúc
+
+```
+index.html          giao diện
+css/style.css       giao diện sáng/tối
+js/util.js          đọc/ghi số có tiền tố SI (4.7k, 10u, …)
+js/engine.js        lõi giải MNA + Newton–Raphson + bước thời gian thích nghi
+js/components.js    mô hình, tham số, ký hiệu, lý thuyết từng linh kiện
+js/netlist.js       chuyển sơ đồ thành netlist, tính dòng trên dây
+js/examples.js      các mạch ví dụ
+js/scope.js         dao động ký
+js/plot.js          vẽ đồ thị
+js/curves.js        trang đặc tuyến linh kiện
+js/app.js           trình soạn thảo sơ đồ, điều khiển mô phỏng
+tools/test.js       kiểm tra tự động lõi mô phỏng và các mạch ví dụ
+```
+
+## Kiểm tra
+
+```bash
+node tools/test.js
+```
+
+Kiểm tra mọi mạch ví dụ (không có cực hở, mô phỏng hội tụ) và đối chiếu kết quả với lý thuyết: hệ số khuếch đại tầng CE/JFET, độ gợn chỉnh lưu, chốt SCR, ngưỡng CMOS, mạch xén, nhân áp, tần số đa hài…
+
+## Hướng phát triển
+
+- Op-amp, cổng logic, transistor quang, opto, TRIAC/DIAC.
+- Phân tích AC (đáp ứng tần số, Bode), quét DC.
+- Mô hình nhiệt độ, điện trở nối tiếp của diode/BJT.
